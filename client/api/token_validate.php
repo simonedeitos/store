@@ -26,5 +26,5 @@ echo json_encode([
     'valid'        => true,
     'station_id'   => $station['id'],
     'station_name' => $station['station_name'],
-    'ws_url'       => WS_SERVER_URL . '?token=' . urlencode($token)
+    'ws_url'       => WS_SERVER_URL . '?ad_token=' . urlencode($token)
 ]);

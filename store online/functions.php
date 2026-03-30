@@ -374,7 +374,10 @@ function syncStationToClientDB($subscriptionId, $action = 'activate') {
     if (!$sub) return false;
 
     $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
-    if (!$clientConn) return false;
+    if (!$clientConn) {
+        error_log("[syncStationToClientDB] Cannot connect to client DB for subscription $subId: " . mysqli_connect_error());
+        return false;
+    }
 
     mysqli_set_charset($clientConn, 'utf8mb4');
     $cToken  = mysqli_real_escape_string($clientConn, $sub['station_token']);
@@ -382,13 +385,19 @@ function syncStationToClientDB($subscriptionId, $action = 'activate') {
     $cUserId = (int)$sub['user_id'];
 
     if ($action === 'activate') {
-        mysqli_query($clientConn, "
+        $result = mysqli_query($clientConn, "
             INSERT INTO stations (store_subscription_id, store_user_id, station_name, token, is_active)
             VALUES ($subId, $cUserId, '$cName', '$cToken', 1)
             ON DUPLICATE KEY UPDATE station_name='$cName', is_active=1
         ");
+        if (!$result) {
+            error_log("[syncStationToClientDB] INSERT/UPDATE failed for subscription $subId: " . mysqli_error($clientConn));
+        }
     } else {
-        mysqli_query($clientConn, "UPDATE stations SET is_active = 0 WHERE token = '$cToken'");
+        $result = mysqli_query($clientConn, "UPDATE stations SET is_active = 0 WHERE token = '$cToken'");
+        if (!$result) {
+            error_log("[syncStationToClientDB] Deactivate failed for subscription $subId: " . mysqli_error($clientConn));
+        }
     }
 
     mysqli_close($clientConn);
