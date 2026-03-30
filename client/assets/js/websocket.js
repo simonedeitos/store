@@ -69,7 +69,7 @@ class AirDirectorWS {
     }
 
     sendCommand(action, extra = {}) {
-        return this.send({ type: 'command', action, ...extra });
+        return this.send({ command: action, ...extra });
     }
 
     close() {

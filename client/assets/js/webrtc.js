@@ -27,12 +27,49 @@ class AudioManager {
 
         this._micAnalyser = null;
         this._micSource   = null;
+        this._mediaRecorder = null;
     }
 
     setWS(ws) { this._ws = ws; }
     setQuality(preset) { this._quality = this._qualityPresets[preset] ? preset : 'medium'; }
 
-    // --- Receive audio from AirDirector ---
+    // --- Receive audio from AirDirector (base64 JSON protocol) ---
+    async receiveAudioData(base64) {
+        if (!base64) return;
+        try {
+            if (!this.audioCtx) {
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (!this.analyser) {
+                    this.analyser = this.audioCtx.createAnalyser();
+                    this.analyser.fftSize = 256;
+                }
+            }
+            // Resume context if suspended (browser autoplay policy)
+            if (this.audioCtx.state === 'suspended') {
+                await this.audioCtx.resume();
+            }
+
+            const binary = atob(base64);
+            const bytes  = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            const audioBuffer = await this.audioCtx.decodeAudioData(bytes.buffer);
+            const source = this.audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            if (this.analyser) {
+                source.connect(this.analyser);
+                this.analyser.connect(this.audioCtx.destination);
+            } else {
+                source.connect(this.audioCtx.destination);
+            }
+            source.start(0);
+        } catch(e) {
+            console.error('[AudioManager] receiveAudioData error:', e);
+        }
+    }
+
+    // --- Receive audio from AirDirector (WebRTC legacy) ---
     async initReceiveAudio(outputDeviceId) {
         this._outputDeviceId = outputDeviceId || null;
     }
@@ -118,7 +155,29 @@ class AudioManager {
                 this._micSource.connect(this._micAnalyser);
             }
 
-            // Add track to all existing peer connections
+            // Start MediaRecorder to send audio as base64 JSON chunks
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+            const recorderOpts = mimeType ? { mimeType } : {};
+            try {
+                this._mediaRecorder = new MediaRecorder(this.localStream, recorderOpts);
+                this._mediaRecorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0 && this._ws) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const base64 = reader.result.split(',')[1];
+                            if (base64) this._ws.send({ command: 'audio_data', data: base64 });
+                        };
+                        reader.readAsDataURL(e.data);
+                    }
+                };
+                this._mediaRecorder.start(100); // 100 ms chunks
+            } catch(recErr) {
+                console.warn('[AudioManager] MediaRecorder init error:', recErr);
+            }
+
+            // Add track to all existing peer connections (WebRTC legacy)
             this.peerConnections.forEach((pc) => {
                 this.localStream.getAudioTracks().forEach(track => {
                     pc.addTrack(track, this.localStream);
@@ -136,6 +195,10 @@ class AudioManager {
 
     stopMicrophone() {
         if (!this.micActive) return;
+        if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
+            this._mediaRecorder.stop();
+        }
+        this._mediaRecorder = null;
         if (this.localStream) {
             this.localStream.getTracks().forEach(t => t.stop());
             this.localStream = null;

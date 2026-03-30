@@ -22,16 +22,16 @@ class PlaylistQueue {
                 // Reorder in local array
                 const moved = this._items.splice(evt.oldIndex, 1)[0];
                 this._items.splice(evt.newIndex, 0, moved);
-                // Send reorder command
-                const order = this._items.map(i => i.id);
-                if (this.ws) this.ws.sendCommand('queue_reorder', { order });
+                // Send reorder command with ordered Guid ids
+                const ids = this._items.map(i => i.id);
+                if (this.ws) this.ws.sendCommand('queue_reorder', { ids });
                 this._renderPositions();
             },
             onAdd: (evt) => {
                 // Item dropped from archive
-                const itemId = parseInt(evt.item.dataset.itemId, 10);
-                const position = evt.newIndex;
-                if (this.ws) this.ws.sendCommand('queue_add', { item_id: itemId, position });
+                const trackId = parseInt(evt.item.dataset.trackId, 10);
+                const itemType = evt.item.dataset.itemType || 'music';
+                if (this.ws) this.ws.sendCommand('queue_add', { type: itemType, trackId });
                 // Remove the cloned element; actual data will come via WS update
                 evt.item.remove();
             }
@@ -72,8 +72,8 @@ class PlaylistQueue {
         container.querySelectorAll('.queue-item-remove').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const id = parseInt(btn.dataset.itemId, 10);
-                if (this.ws) this.ws.sendCommand('queue_remove', { item_id: id });
+                const id = btn.dataset.itemId; // Guid string — do NOT parseInt
+                if (this.ws) this.ws.sendCommand('queue_remove', { id });
             });
         });
 

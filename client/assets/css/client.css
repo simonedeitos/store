@@ -553,6 +553,20 @@ body {
 .archive-item-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .archive-item-artist { font-size: 0.75rem; color: var(--text-muted); }
 .archive-item-duration { color: var(--text-muted); font-size: 0.75rem; flex-shrink: 0; }
+.archive-item-add {
+    color: var(--accent-success);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    opacity: 0.6;
+    flex-shrink: 0;
+    font-size: 1rem;
+    line-height: 1;
+    transition: var(--transition);
+}
+.archive-item-add:hover { opacity: 1; background: rgba(0,217,163,0.15); }
 
 /* ---- PLAYLIST QUEUE ---- */
 .playlist-queue-list {
