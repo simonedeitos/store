@@ -94,14 +94,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $cDays  = mysqli_real_escape_string($clientConn, preg_replace('/[^0-9,]/', '', $suDays));
                                 $cStart = mysqli_real_escape_string($clientConn, $suStart);
                                 $cEnd   = mysqli_real_escape_string($clientConn, $suEnd);
-                                mysqli_query($clientConn, "
+                                $syncResult = mysqli_query($clientConn, "
                                     INSERT INTO station_users (station_id, name, email, password_hash, is_active, language, access_days, access_time_start, access_time_end)
                                     VALUES ($stId, '$cName', '$cEmail', '$cHash', 1, '$cLang', '$cDays', '$cStart', '$cEnd')
                                     ON DUPLICATE KEY UPDATE name='$cName', password_hash='$cHash', language='$cLang', access_days='$cDays', access_time_start='$cStart', access_time_end='$cEnd'
                                 ");
+                                if (!$syncResult) {
+                                    error_log("[add_subuser] Sync to client DB failed for subscription $subId, email $suEmail: " . mysqli_error($clientConn));
+                                }
+                            } else {
+                                error_log("[add_subuser] Station not found in client DB for token of subscription $subId");
                             }
+                        } else {
+                            error_log("[add_subuser] Subscription $subId not found when syncing subuser $suEmail");
                         }
                         mysqli_close($clientConn);
+                    } else {
+                        error_log("[add_subuser] Cannot connect to client DB for subuser sync (subscription $subId): " . mysqli_connect_error());
                     }
                     $message = 'Sottoutente aggiunto con successo.';
                 }
@@ -127,9 +136,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($stRow) {
                         $stId      = (int)$stRow['id'];
                         $newActive = $suData['is_active'] ? 1 : 0;
-                        mysqli_query($clientConn, "UPDATE station_users SET is_active = $newActive WHERE station_id = $stId AND email = '$cEmail'");
+                        $syncResult = mysqli_query($clientConn, "UPDATE station_users SET is_active = $newActive WHERE station_id = $stId AND email = '$cEmail'");
+                        if (!$syncResult) {
+                            error_log("[toggle_subuser] Sync to client DB failed for subuser $suId, email {$suData['email']}: " . mysqli_error($clientConn));
+                        }
+                    } else {
+                        error_log("[toggle_subuser] Station not found in client DB for token of subuser $suId");
                     }
                     mysqli_close($clientConn);
+                } else {
+                    error_log("[toggle_subuser] Cannot connect to client DB for subuser $suId: " . mysqli_connect_error());
                 }
             }
         }
@@ -153,9 +169,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stRow  = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT id FROM stations WHERE token = '$cToken'"));
                     if ($stRow) {
                         $stId = (int)$stRow['id'];
-                        mysqli_query($clientConn, "DELETE FROM station_users WHERE station_id = $stId AND email = '$cEmail'");
+                        $syncResult = mysqli_query($clientConn, "DELETE FROM station_users WHERE station_id = $stId AND email = '$cEmail'");
+                        if (!$syncResult) {
+                            error_log("[delete_subuser] Sync delete to client DB failed for subuser $suId, email {$suData['email']}: " . mysqli_error($clientConn));
+                        }
+                    } else {
+                        error_log("[delete_subuser] Station not found in client DB for token of subuser $suId");
                     }
                     mysqli_close($clientConn);
+                } else {
+                    error_log("[delete_subuser] Cannot connect to client DB for subuser $suId: " . mysqli_connect_error());
                 }
             }
         }

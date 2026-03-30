@@ -99,6 +99,47 @@ $clientConn = getClientDB();
 $emailEsc2 = dbEscClient($email);
 $suRow = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT su.*, s.station_name, s.token as station_token FROM station_users su JOIN stations s ON s.id = su.station_id WHERE su.email = '$emailEsc2' AND su.is_active = 1 AND s.is_active = 1 LIMIT 1"));
 
+// Fallback: if subuser not found in client DB, try store DB and auto-sync
+if (!$suRow) {
+    $storeConn2 = getStoreDB();
+    $emailEsc3 = dbEscStore($email);
+    $storeSubRow = mysqli_fetch_assoc(mysqli_query($storeConn2,
+        "SELECT css.*, cs.station_token, cs.radio_name, cs.id as sub_id
+         FROM client_station_subusers css
+         JOIN client_subscriptions cs ON cs.id = css.subscription_id
+         WHERE css.email = '$emailEsc3' AND css.is_active = 1 AND cs.status = 'active'
+         LIMIT 1"
+    ));
+    if ($storeSubRow && verifyPassword($password, $storeSubRow['password_hash'])) {
+        // Attempt to sync this subuser to client DB
+        $cToken = dbEscClient($storeSubRow['station_token']);
+        $stRow = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT id FROM stations WHERE token = '$cToken' AND is_active = 1"));
+        if ($stRow) {
+            $stId    = (int)$stRow['id'];
+            $cName   = dbEscClient($storeSubRow['name']);
+            $cEmail  = dbEscClient($storeSubRow['email']);
+            $cHash   = dbEscClient($storeSubRow['password_hash']);
+            $cLang   = dbEscClient($storeSubRow['language'] ?? 'it');
+            $cDays   = dbEscClient(preg_replace('/[^0-9,]/', '', $storeSubRow['access_days'] ?? '1,2,3,4,5,6,7'));
+            $cStart  = dbEscClient($storeSubRow['access_time_start'] ?? '00:00:00');
+            $cEnd    = dbEscClient($storeSubRow['access_time_end'] ?? '23:59:59');
+            $syncOk  = mysqli_query($clientConn, "
+                INSERT INTO station_users (station_id, name, email, password_hash, is_active, language, access_days, access_time_start, access_time_end)
+                VALUES ($stId, '$cName', '$cEmail', '$cHash', 1, '$cLang', '$cDays', '$cStart', '$cEnd')
+                ON DUPLICATE KEY UPDATE name='$cName', password_hash='$cHash', is_active=1, language='$cLang', access_days='$cDays', access_time_start='$cStart', access_time_end='$cEnd'
+            ");
+            if ($syncOk) {
+                // Re-fetch the newly synced row with station info
+                $suRow = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT su.*, s.station_name, s.token as station_token FROM station_users su JOIN stations s ON s.id = su.station_id WHERE su.email = '$emailEsc2' AND su.is_active = 1 AND s.is_active = 1 LIMIT 1"));
+            } else {
+                error_log("[auth] Fallback sync failed for subuser $email: " . mysqli_error($clientConn));
+            }
+        } else {
+            error_log("[auth] Fallback sync: station not found in client DB for token of subuser $email");
+        }
+    }
+}
+
 if ($suRow && verifyPassword($password, $suRow['password_hash'])) {
     // Check access rules
     $now = new DateTime();
