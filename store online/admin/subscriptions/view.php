@@ -25,38 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_query($conn, "UPDATE client_subscriptions SET status = '$newStatusEsc' WHERE id = $id");
             $message = 'Stato aggiornato.';
 
-            // Sync station to client DB when activating
+            // Sync con client DB
             if ($newStatus === 'active') {
-                $subData = mysqli_fetch_assoc(mysqli_query($conn, "SELECT cs.*, u.id as uid FROM client_subscriptions cs JOIN users u ON u.id = cs.user_id WHERE cs.id = $id"));
-                if ($subData) {
-                    $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
-                    if ($clientConn) {
-                        mysqli_set_charset($clientConn, 'utf8mb4');
-                        $cToken  = mysqli_real_escape_string($clientConn, $subData['station_token']);
-                        $cName   = mysqli_real_escape_string($clientConn, $subData['radio_name']);
-                        $cUserId = (int)$subData['uid'];
-                        $cSubId  = (int)$subData['id'];
-                        mysqli_query($clientConn, "
-                            INSERT INTO stations (store_subscription_id, store_user_id, station_name, token, is_active)
-                            VALUES ($cSubId, $cUserId, '$cName', '$cToken', 1)
-                            ON DUPLICATE KEY UPDATE station_name='$cName', is_active=1
-                        ");
-                        mysqli_close($clientConn);
-                    }
-                }
-            }
-            // When suspending/cancelling, deactivate station in client DB
-            if (in_array($newStatus, ['suspended', 'expired', 'cancelled'])) {
-                $subData = mysqli_fetch_assoc(mysqli_query($conn, "SELECT station_token FROM client_subscriptions WHERE id = $id"));
-                if ($subData) {
-                    $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
-                    if ($clientConn) {
-                        mysqli_set_charset($clientConn, 'utf8mb4');
-                        $cToken = mysqli_real_escape_string($clientConn, $subData['station_token']);
-                        mysqli_query($clientConn, "UPDATE stations SET is_active = 0 WHERE token = '$cToken'");
-                        mysqli_close($clientConn);
-                    }
-                }
+                syncStationToClientDB($id, 'activate');
+            } elseif (in_array($newStatus, ['suspended', 'expired', 'cancelled'])) {
+                syncStationToClientDB($id, 'deactivate');
             }
         }
     } elseif ($action === 'extend') {

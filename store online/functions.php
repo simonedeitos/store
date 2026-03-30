@@ -353,4 +353,75 @@ function paginate($totalItems, $perPage = 20, $currentPage = 1) {
         'offset' => $offset
     ];
 }
+
+// ============================================================
+// CLIENT DB SYNC
+// ============================================================
+
+/**
+ * Sincronizza una sottoscrizione con il Client DB.
+ * Crea/aggiorna la stazione nella tabella `stations` del client DB.
+ *
+ * @param int $subscriptionId  ID della sottoscrizione nello store
+ * @param string $action       'activate' | 'deactivate'
+ * @return bool
+ */
+function syncStationToClientDB($subscriptionId, $action = 'activate') {
+    $conn = getDBConnection();
+    $subId = (int)$subscriptionId;
+
+    $sub = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM client_subscriptions WHERE id = $subId"));
+    if (!$sub) return false;
+
+    $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
+    if (!$clientConn) return false;
+
+    mysqli_set_charset($clientConn, 'utf8mb4');
+    $cToken  = mysqli_real_escape_string($clientConn, $sub['station_token']);
+    $cName   = mysqli_real_escape_string($clientConn, $sub['radio_name']);
+    $cUserId = (int)$sub['user_id'];
+
+    if ($action === 'activate') {
+        mysqli_query($clientConn, "
+            INSERT INTO stations (store_subscription_id, store_user_id, station_name, token, is_active)
+            VALUES ($subId, $cUserId, '$cName', '$cToken', 1)
+            ON DUPLICATE KEY UPDATE station_name='$cName', is_active=1
+        ");
+    } else {
+        mysqli_query($clientConn, "UPDATE stations SET is_active = 0 WHERE token = '$cToken'");
+    }
+
+    mysqli_close($clientConn);
+    return true;
+}
+
+/**
+ * Attiva tutte le sottoscrizioni pending di un utente legate a un ordine specifico.
+ * Setta lo stato a 'active', started_at a NOW(), e sincronizza con il client DB.
+ *
+ * @param int $userId
+ * @param int $orderId
+ * @return int Numero di sottoscrizioni attivate
+ */
+function activatePendingSubscriptions($userId, $orderId = null) {
+    $conn = getDBConnection();
+    $uid = (int)$userId;
+    $count = 0;
+
+    $where = "user_id = $uid AND status = 'pending'";
+    if ($orderId) {
+        $oid = (int)$orderId;
+        $where .= " AND order_id = $oid";
+    }
+
+    $pendingSubs = mysqli_query($conn, "SELECT * FROM client_subscriptions WHERE $where");
+    while ($pSub = mysqli_fetch_assoc($pendingSubs)) {
+        $pSubId = (int)$pSub['id'];
+        mysqli_query($conn, "UPDATE client_subscriptions SET status = 'active', started_at = NOW() WHERE id = $pSubId");
+        syncStationToClientDB($pSubId, 'activate');
+        $count++;
+    }
+
+    return $count;
+}
 ?>
