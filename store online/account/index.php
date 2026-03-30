@@ -19,6 +19,9 @@ $totalLicenses = mysqli_fetch_assoc($licensesR)['cnt'];
 $activeR = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM licenses WHERE user_id = $userId AND is_active = 1");
 $activeLicenses = mysqli_fetch_assoc($activeR)['cnt'];
 
+$subsR = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM client_subscriptions WHERE user_id = $userId AND status = 'active'");
+$totalSubs = mysqli_fetch_assoc($subsR)['cnt'];
+
 // Ultimi ordini
 $recentOrders = mysqli_query($conn, "SELECT * FROM orders WHERE user_id = $userId ORDER BY created_at DESC LIMIT 5");
 
@@ -32,22 +35,28 @@ include __DIR__ . '/../includes/header.php';
     <h1 class="section-title">Benvenuto, <?= h($user['first_name']) ?>!</h1>
 
     <div class="row g-4 mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="stat-card">
                 <div class="stat-number"><?= $totalOrders ?></div>
                 <div class="stat-label">Ordini</div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="stat-card">
                 <div class="stat-number"><?= $totalLicenses ?></div>
                 <div class="stat-label">Licenze Totali</div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="stat-card">
                 <div class="stat-number"><?= $activeLicenses ?></div>
                 <div class="stat-label">Licenze Attive</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-number"><?= $totalSubs ?></div>
+                <div class="stat-label">Sottoscrizioni Attive</div>
             </div>
         </div>
     </div>
@@ -82,6 +91,14 @@ include __DIR__ . '/../includes/header.php';
                 <div class="card-body text-center">
                     <i class="bi bi-person-gear fs-1 text-warning"></i>
                     <h6 class="mt-2 fw-bold">Profilo</h6>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="<?= SITE_URL ?>/account/subscriptions.php" class="card text-decoration-none h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-broadcast fs-1 text-danger"></i>
+                    <h6 class="mt-2 fw-bold">Sottoscrizioni</h6>
                 </div>
             </a>
         </div>

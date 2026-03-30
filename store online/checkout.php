@@ -84,6 +84,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_query($conn, "UPDATE coupons SET used_count = used_count + 1 WHERE id = $couponId");
         }
 
+        // Handle subscription items - create pending subscription record
+        if (isset($_SESSION['pending_subscription'])) {
+            $ps = $_SESSION['pending_subscription'];
+            $planId = (int)$ps['plan_id'];
+            $radioName = $ps['radio_name'];
+
+            do {
+                $token = bin2hex(random_bytes(32));
+                $tokenEsc = dbEsc($token);
+                $exists = mysqli_fetch_assoc(mysqli_query($conn, "SELECT id FROM client_subscriptions WHERE station_token = '$tokenEsc'"));
+            } while ($exists);
+
+            $expiresAt = match($ps['billing_cycle']) {
+                'monthly'    => date('Y-m-d H:i:s', strtotime('+1 month')),
+                'semiannual' => date('Y-m-d H:i:s', strtotime('+6 months')),
+                'annual'     => date('Y-m-d H:i:s', strtotime('+1 year')),
+                default      => date('Y-m-d H:i:s', strtotime('+1 month')),
+            };
+
+            $radioNameEsc = dbEsc($radioName);
+            mysqli_query($conn, "
+                INSERT INTO client_subscriptions (user_id, plan_id, radio_name, station_token, status, expires_at)
+                VALUES ($userId, $planId, '$radioNameEsc', '$tokenEsc', 'pending', '$expiresAt')
+            ");
+
+            unset($_SESSION['pending_subscription']);
+        }
+
         // Svuota carrello e coupon
         clearCart();
         unset($_SESSION['coupon'], $_SESSION['coupon_discount']);
@@ -153,6 +181,9 @@ include __DIR__ . '/includes/header.php';
                                 <strong><?= h($item['name']) ?></strong>
                                 <?php if ($item['type'] === 'bundle'): ?>
                                     <span class="badge bg-info ms-1">Bundle</span>
+                                <?php endif; ?>
+                                <?php if ($item['type'] === 'subscription'): ?>
+                                    <span class="badge bg-danger ms-1">Sottoscrizione</span>
                                 <?php endif; ?>
                                 <br><small class="text-muted">Qtà: <?= $item['qty'] ?> × <?= formatPrice($item['price']) ?></small>
                                 <?php if (($item['discount_amount'] ?? 0) > 0): ?>

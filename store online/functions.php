@@ -180,6 +180,25 @@ function getCartDetails() {
                 ];
                 $subtotal += $lineTotal;
             }
+        } elseif ($item['type'] === 'subscription') {
+            $id = (int)$item['id'];
+            $r = mysqli_query($conn, "SELECT id, name, price, billing_cycle FROM client_subscription_plans WHERE id = $id AND is_active = 1");
+            $plan = mysqli_fetch_assoc($r);
+            if ($plan) {
+                $lineTotal = $plan['price'] * $item['qty'];
+                $radioName = $_SESSION['pending_subscription']['radio_name'] ?? 'Stazione Radio';
+                $items[] = [
+                    'key' => $key,
+                    'type' => 'subscription',
+                    'id' => $plan['id'],
+                    'name' => $plan['name'] . ' - ' . $radioName,
+                    'price' => (float)$plan['price'],
+                    'qty' => $item['qty'],
+                    'image' => null,
+                    'line_total' => $lineTotal
+                ];
+                $subtotal += $lineTotal;
+            }
         }
     }
 

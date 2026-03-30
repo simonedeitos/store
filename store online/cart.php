@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $type = $_POST['type'] ?? '';
             $id = (int)($_POST['id'] ?? 0);
             $qty = max(1, (int)($_POST['qty'] ?? 1));
-            if (in_array($type, ['software', 'bundle']) && $id > 0) {
+            if (in_array($type, ['software', 'bundle', 'subscription']) && $id > 0) {
                 addToCart($type, $id, $qty);
                 echo json_encode(['success' => true, 'cart_count' => getCartCount()]);
             } else {
@@ -90,7 +90,11 @@ $total = max(0, $subtotal - $couponDiscount);
                     <div class="card-body">
                         <?php foreach ($items as $item): ?>
                             <div class="cart-item">
-                                <?php if ($item['image']): ?>
+                                <?php if ($item['type'] === 'subscription'): ?>
+                                    <div style="width:80px;height:60px;" class="bg-primary bg-opacity-10 rounded d-flex align-items-center justify-content-center me-3">
+                                        <i class="bi bi-broadcast text-primary fs-4"></i>
+                                    </div>
+                                <?php elseif ($item['image']): ?>
                                     <img src="<?= UPLOADS_URL . h($item['image']) ?>" alt="<?= h($item['name']) ?>">
                                 <?php else: ?>
                                     <div style="width:80px;height:60px;" class="bg-light rounded d-flex align-items-center justify-content-center me-3">
@@ -104,6 +108,9 @@ $total = max(0, $subtotal - $couponDiscount);
                                         <?php if ($item['type'] === 'bundle'): ?>
                                             <span class="badge bg-info ms-1">Bundle</span>
                                         <?php endif; ?>
+                                        <?php if ($item['type'] === 'subscription'): ?>
+                                            <span class="badge bg-danger ms-1">Sottoscrizione</span>
+                                        <?php endif; ?>
                                     </h6>
                                     <small class="text-muted"><?= formatPrice($item['price']) ?> cad.</small>
                                     <?php if (isset($item['discount_amount']) && $item['discount_amount'] > 0): ?>
@@ -112,9 +119,13 @@ $total = max(0, $subtotal - $couponDiscount);
                                 </div>
                                 
                                 <div class="d-flex align-items-center gap-2">
-                                    <input type="number" class="form-control form-control-sm cart-qty-input" 
-                                           style="width: 70px;" min="1" value="<?= $item['qty'] ?>" 
-                                           data-key="<?= h($item['key']) ?>">
+                                    <?php if ($item['type'] === 'subscription'): ?>
+                                        <span class="badge bg-primary">Sottoscrizione</span>
+                                    <?php else: ?>
+                                        <input type="number" class="form-control form-control-sm cart-qty-input" 
+                                               style="width: 70px;" min="1" value="<?= $item['qty'] ?>" 
+                                               data-key="<?= h($item['key']) ?>">
+                                    <?php endif; ?>
                                     <strong><?= formatPrice($item['line_total']) ?></strong>
                                     <button class="btn btn-outline-danger btn-sm btn-remove-cart" data-key="<?= h($item['key']) ?>">
                                         <i class="bi bi-trash"></i>

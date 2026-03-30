@@ -28,42 +28,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$planRow) {
                 $error = 'Piano non trovato.';
             } else {
-                // Generate unique station token
-                do {
-                    $token    = bin2hex(random_bytes(32));
-                    $tokenEsc = dbEsc($token);
-                    $exists   = mysqli_fetch_assoc(mysqli_query($conn, "SELECT id FROM client_subscriptions WHERE station_token = '$tokenEsc'"));
-                } while ($exists);
-
-                $expiresAt = match($planRow['billing_cycle']) {
-                    'monthly'    => date('Y-m-d H:i:s', strtotime('+1 month')),
-                    'semiannual' => date('Y-m-d H:i:s', strtotime('+6 months')),
-                    'annual'     => date('Y-m-d H:i:s', strtotime('+1 year')),
-                    default      => date('Y-m-d H:i:s', strtotime('+1 month')),
-                };
-
-                $radioNameEsc = dbEsc($radioName);
-                mysqli_query($conn, "
-                    INSERT INTO client_subscriptions (user_id, plan_id, radio_name, station_token, status, expires_at)
-                    VALUES ($userId, $planEsc, '$radioNameEsc', '$tokenEsc', 'active', '$expiresAt')
-                ");
-                $subId = mysqli_insert_id($conn);
-
-                // Sync station to client DB
-                $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
-                if ($clientConn) {
-                    mysqli_set_charset($clientConn, 'utf8mb4');
-                    $cRadioName = mysqli_real_escape_string($clientConn, $radioName);
-                    $cToken     = mysqli_real_escape_string($clientConn, $token);
-                    mysqli_query($clientConn, "
-                        INSERT INTO stations (store_subscription_id, store_user_id, station_name, token, is_active)
-                        VALUES ($subId, $userId, '$cRadioName', '$cToken', 1)
-                        ON DUPLICATE KEY UPDATE station_name = '$cRadioName'
-                    ");
-                    mysqli_close($clientConn);
-                }
-
-                $message = 'Sottoscrizione attivata con successo! Il tuo token è: <code>' . h($token) . '</code>';
+                // Store subscription info in session and add to cart
+                $_SESSION['pending_subscription'] = [
+                    'plan_id'       => $planId,
+                    'radio_name'    => $radioName,
+                    'plan_name'     => $planRow['name'],
+                    'price'         => (float)$planRow['price'],
+                    'billing_cycle' => $planRow['billing_cycle']
+                ];
+                addToCart('subscription', $planId, 1);
+                header('Location: ' . SITE_URL . '/checkout.php');
+                exit;
             }
         }
     } elseif ($action === 'add_subuser') {
@@ -212,7 +187,7 @@ include __DIR__ . '/../includes/header.php';
             </div>
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-<?= $sub['status'] === 'active' ? 'success' : ($sub['status'] === 'expired' ? 'danger' : 'warning') ?>">
-                    <?= ucfirst($sub['status']) ?>
+                    <?= $sub['status'] === 'pending' ? 'In attesa' : ucfirst($sub['status']) ?>
                 </span>
                 <?php if ($sub['status'] === 'active'): ?>
                 <a href="<?= CLIENT_SITE_URL ?>" target="_blank" class="btn btn-sm btn-primary">
@@ -222,6 +197,11 @@ include __DIR__ . '/../includes/header.php';
             </div>
         </div>
         <div class="card-body">
+            <?php if ($sub['status'] === 'pending'): ?>
+            <div class="alert alert-warning mb-3">
+                <i class="bi bi-clock me-2"></i>In attesa di conferma ordine. La stazione verrà attivata dopo la conferma dell'amministratore.
+            </div>
+            <?php else: ?>
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Token AirDirector</label>
@@ -259,8 +239,10 @@ include __DIR__ . '/../includes/header.php';
                     </form>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- Subusers -->
+            <?php if ($sub['status'] !== 'pending'): ?>
             <hr>
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="fw-bold mb-0"><i class="bi bi-people me-1"></i>Sottoutenti (<?= count($sub['subusers']) ?>)</h6>
@@ -372,6 +354,7 @@ include __DIR__ . '/../includes/header.php';
             <?php else: ?>
             <p class="text-muted small">Nessun sottoutente. Aggiungi i tuoi speaker!</p>
             <?php endif; ?>
+            <?php endif; // end status !== pending ?>
         </div>
     </div>
     <?php endforeach; ?>
