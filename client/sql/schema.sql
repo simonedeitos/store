@@ -1,5 +1,5 @@
 -- AirDirector Client Database Schema
--- Database: 4362062795_adclient
+-- Database: u362062795_adclient
 
 CREATE TABLE IF NOT EXISTS stations (
     id INT AUTO_INCREMENT PRIMARY KEY,

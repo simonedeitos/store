@@ -114,14 +114,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($subCheck) {
             mysqli_query($conn, "UPDATE client_station_subusers SET is_active = 1 - is_active WHERE id = $suId AND subscription_id = $subId");
             $message = 'Sottoutente aggiornato.';
+
+            // Sync subuser status to client DB
+            $suData = mysqli_fetch_assoc(mysqli_query($conn, "SELECT css.*, cs.station_token FROM client_station_subusers css JOIN client_subscriptions cs ON cs.id = css.subscription_id WHERE css.id = $suId"));
+            if ($suData) {
+                $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
+                if ($clientConn) {
+                    mysqli_set_charset($clientConn, 'utf8mb4');
+                    $cToken = mysqli_real_escape_string($clientConn, $suData['station_token']);
+                    $cEmail = mysqli_real_escape_string($clientConn, $suData['email']);
+                    $stRow  = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT id FROM stations WHERE token = '$cToken'"));
+                    if ($stRow) {
+                        $stId      = (int)$stRow['id'];
+                        $newActive = $suData['is_active'] ? 1 : 0;
+                        mysqli_query($clientConn, "UPDATE station_users SET is_active = $newActive WHERE station_id = $stId AND email = '$cEmail'");
+                    }
+                    mysqli_close($clientConn);
+                }
+            }
         }
     } elseif ($action === 'delete_subuser') {
         $suId  = (int)($_POST['subuser_id'] ?? 0);
         $subId = (int)($_POST['subscription_id'] ?? 0);
         $subCheck = mysqli_fetch_assoc(mysqli_query($conn, "SELECT id FROM client_subscriptions WHERE id = $subId AND user_id = $userId"));
         if ($subCheck) {
+            // Fetch subuser data before deleting so we can sync to client DB
+            $suData = mysqli_fetch_assoc(mysqli_query($conn, "SELECT css.*, cs.station_token FROM client_station_subusers css JOIN client_subscriptions cs ON cs.id = css.subscription_id WHERE css.id = $suId AND css.subscription_id = $subId"));
             mysqli_query($conn, "DELETE FROM client_station_subusers WHERE id = $suId AND subscription_id = $subId");
             $message = 'Sottoutente eliminato.';
+
+            // Sync subuser deletion to client DB
+            if ($suData) {
+                $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
+                if ($clientConn) {
+                    mysqli_set_charset($clientConn, 'utf8mb4');
+                    $cToken = mysqli_real_escape_string($clientConn, $suData['station_token']);
+                    $cEmail = mysqli_real_escape_string($clientConn, $suData['email']);
+                    $stRow  = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT id FROM stations WHERE token = '$cToken'"));
+                    if ($stRow) {
+                        $stId = (int)$stRow['id'];
+                        mysqli_query($clientConn, "DELETE FROM station_users WHERE station_id = $stId AND email = '$cEmail'");
+                    }
+                    mysqli_close($clientConn);
+                }
+            }
         }
     } elseif ($action === 'update_reminders') {
         $subId = (int)($_POST['subscription_id'] ?? 0);

@@ -44,7 +44,7 @@ function generateSessionToken() {
 // ============================================================
 
 function isClientLoggedIn() {
-    return isset($_SESSION['client_user_id']) && $_SESSION['client_user_id'] > 0;
+    return isset($_SESSION['client_user_id']) && !empty($_SESSION['client_user_id']);
 }
 
 function isClientAdmin() {
