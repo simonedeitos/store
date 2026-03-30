@@ -13,9 +13,20 @@ define('DB_NAME', 'u362062795_airdirector');
 define('DB_USER', 'u362062795_airdirector');
 define('DB_PASS', '^4ir;Dir3ct0r-database=2025%');
 
+// Client DB (AirDirector Client app)
+define('CLIENT_DB_HOST', '127.0.0.1');
+define('CLIENT_DB_PORT', '3306');
+define('CLIENT_DB_NAME', '4362062795_adclient');
+define('CLIENT_DB_USER', '4362062795_adclient');
+define('CLIENT_DB_PASS', '^4ir;Dir3ctOr-database=2025%');
+
+// JWT secret for admin SSO to AirDirector Client
+define('CLIENT_ADMIN_JWT_SECRET', 'airdirector-admin-sso-secret-2025');
+
 // Costanti generali
 define('SITE_NAME', 'AirDirector Store');
 define('SITE_URL', 'https://store.airdirector.app');
+define('CLIENT_SITE_URL', 'https://client.airdirector.app');
 
 // Percorso base
 define('BASE_PATH', __DIR__);

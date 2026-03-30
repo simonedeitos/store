@@ -1,0 +1,82 @@
+{
+  "common": {
+    "online": "Online",
+    "offline": "Offline",
+    "loading": "Laden...",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "yes": "Ja",
+    "no": "Nein",
+    "confirm": "Bestätigen",
+    "error": "Fehler",
+    "success": "Erfolg"
+  },
+  "login": {
+    "subtitle": "Ferngesteuertes Broadcasting",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "language": "Sprache",
+    "select_station": "Station auswählen",
+    "submit": "Anmelden",
+    "logged_out": "Erfolgreich abgemeldet.",
+    "session_expired": "Sitzung abgelaufen. Bitte erneut anmelden.",
+    "access_denied": "Zugriff verweigert: außerhalb der erlaubten Zeiten.",
+    "error_credentials": "Ungültige E-Mail oder Passwort.",
+    "error_suspended": "Konto gesperrt. Kontaktiere den Administrator.",
+    "error_no_subscription": "Kein aktives AirDirector Client Abonnement.",
+    "error_access_day": "Zugriff an diesem Tag nicht erlaubt.",
+    "error_access_time": "Zugriff zu dieser Zeit nicht erlaubt."
+  },
+  "player": {
+    "title": "Player-Steuerung",
+    "no_track": "Kein Titel läuft",
+    "mode_auto": "AUTO",
+    "mode_manual": "MANUELL",
+    "auto": "AUTO",
+    "manual": "MANUELL",
+    "stopped": "Gestoppt",
+    "playing": "Wird abgespielt",
+    "paused": "Pausiert"
+  },
+  "playlist": {
+    "title": "Wiedergabelisten-Warteschlange",
+    "empty": "Warteschlange ist leer",
+    "drag_hint": "Elemente aus dem Archiv hierher ziehen"
+  },
+  "archive": {
+    "title": "Archiv",
+    "music": "Musik",
+    "clips": "Clips",
+    "search_placeholder": "Titel oder Künstler suchen...",
+    "loading": "Archiv wird geladen...",
+    "empty": "Keine Elemente gefunden"
+  },
+  "audio": {
+    "monitor_label": "Audio-Monitor",
+    "send_mic": "MIC SENDEN",
+    "stop_mic": "MIC STOPPEN",
+    "quality": "Qualität",
+    "default_output": "Standardausgabe",
+    "default_input": "Standardmikrofon",
+    "mic_error": "Mikrofon nicht verfügbar."
+  },
+  "countdown": {
+    "title": "Countdown",
+    "next_schedule": "Nächste Planung",
+    "next_ad": "Nächste Werbung"
+  },
+  "users": {
+    "connected_users": "Verbundene Benutzer",
+    "no_users": "Keine Benutzer verbunden"
+  },
+  "admin": {
+    "switch_station": "Station wechseln",
+    "interaction_on": "Interaktion EIN",
+    "interaction_off": "Interaktion AUS",
+    "stations": "Stationen",
+    "connected": "Verbunden"
+  }
+}

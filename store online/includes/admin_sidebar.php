@@ -56,6 +56,14 @@ function adminActive($dir, $page = '') {
                 <i class="bi bi-percent me-2"></i>Sconti Quantità
             </a>
         </li>
+        <li class="mt-3">
+            <small class="text-muted text-uppercase px-3" style="font-size:0.7rem;letter-spacing:1px;">AirDirector Client</small>
+        </li>
+        <li>
+            <a href="<?= SITE_URL ?>/admin/subscriptions/" class="nav-link text-white <?= adminActive('subscriptions') ?>">
+                <i class="bi bi-broadcast me-2"></i>Sottoscrizioni Client
+            </a>
+        </li>
         <li>
             <a href="<?= SITE_URL ?>/admin/requests/" class="nav-link text-white <?= adminActive('requests') ?>">
                 <i class="bi bi-envelope me-2"></i>Richieste

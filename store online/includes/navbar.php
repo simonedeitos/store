@@ -36,6 +36,7 @@
                             <li><a class="dropdown-item" href="<?= SITE_URL ?>/account/">Dashboard</a></li>
                             <li><a class="dropdown-item" href="<?= SITE_URL ?>/account/orders.php">Ordini</a></li>
                             <li><a class="dropdown-item" href="<?= SITE_URL ?>/account/licenses.php">Licenze</a></li>
+                            <li><a class="dropdown-item" href="<?= SITE_URL ?>/account/subscriptions.php"><i class="bi bi-broadcast me-1"></i>AirDirector Client</a></li>
                             <li><a class="dropdown-item" href="<?= SITE_URL ?>/account/profile.php">Profilo</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="<?= SITE_URL ?>/logout.php">Logout</a></li>

@@ -1,0 +1,4 @@
+node_modules/
+client/ws-server/node_modules/
+*.log
+.DS_Store

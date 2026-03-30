@@ -1,0 +1,82 @@
+{
+  "common": {
+    "online": "En ligne",
+    "offline": "Hors ligne",
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "yes": "Oui",
+    "no": "Non",
+    "confirm": "Confirmer",
+    "error": "Erreur",
+    "success": "Succès"
+  },
+  "login": {
+    "subtitle": "Contrôle de diffusion à distance",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "language": "Langue",
+    "select_station": "Sélectionner la station",
+    "submit": "Se connecter",
+    "logged_out": "Déconnexion réussie.",
+    "session_expired": "Session expirée. Veuillez vous reconnecter.",
+    "access_denied": "Accès refusé : hors des heures autorisées.",
+    "error_credentials": "E-mail ou mot de passe invalide.",
+    "error_suspended": "Compte suspendu. Contactez l'administrateur.",
+    "error_no_subscription": "Aucun abonnement AirDirector Client actif.",
+    "error_access_day": "Accès non autorisé ce jour.",
+    "error_access_time": "Accès non autorisé à cette heure."
+  },
+  "player": {
+    "title": "Contrôle Lecteur",
+    "no_track": "Aucune piste en cours",
+    "mode_auto": "AUTO",
+    "mode_manual": "MANUEL",
+    "auto": "AUTO",
+    "manual": "MANUEL",
+    "stopped": "Arrêté",
+    "playing": "En cours",
+    "paused": "En pause"
+  },
+  "playlist": {
+    "title": "File de lecture",
+    "empty": "File vide",
+    "drag_hint": "Glissez des éléments depuis l'archive ici"
+  },
+  "archive": {
+    "title": "Archive",
+    "music": "Musique",
+    "clips": "Clips",
+    "search_placeholder": "Rechercher titre ou artiste...",
+    "loading": "Chargement de l'archive...",
+    "empty": "Aucun élément trouvé"
+  },
+  "audio": {
+    "monitor_label": "Moniteur Audio",
+    "send_mic": "ENVOYER MIC",
+    "stop_mic": "ARRÊTER MIC",
+    "quality": "Qualité",
+    "default_output": "Sortie par défaut",
+    "default_input": "Microphone par défaut",
+    "mic_error": "Impossible d'accéder au microphone."
+  },
+  "countdown": {
+    "title": "Compte à rebours",
+    "next_schedule": "Prochaine programmation",
+    "next_ad": "Prochaine publicité"
+  },
+  "users": {
+    "connected_users": "Utilisateurs connectés",
+    "no_users": "Aucun utilisateur connecté"
+  },
+  "admin": {
+    "switch_station": "Changer de station",
+    "interaction_on": "Interaction ON",
+    "interaction_off": "Interaction OFF",
+    "stations": "Stations",
+    "connected": "Connectés"
+  }
+}
