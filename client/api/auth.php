@@ -99,6 +99,45 @@ $clientConn = getClientDB();
 $emailEsc2 = dbEscClient($email);
 $suRow = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT su.*, s.station_name, s.token as station_token FROM station_users su JOIN stations s ON s.id = su.station_id WHERE su.email = '$emailEsc2' AND su.is_active = 1 AND s.is_active = 1 LIMIT 1"));
 
+// --- Auto-repair: if subuser missing in client DB, sync from store DB ---
+if (!$suRow) {
+    $storeConn2   = getStoreDB();
+    $emailEscStore = dbEscStore($email);
+    $storeSubuser  = mysqli_fetch_assoc(mysqli_query($storeConn2,
+        "SELECT css.*, cs.station_token FROM client_station_subusers css
+         JOIN client_subscriptions cs ON cs.id = css.subscription_id
+         WHERE css.email = '$emailEscStore' AND css.is_active = 1 AND cs.status = 'active' LIMIT 1"
+    ));
+    if ($storeSubuser) {
+        $repairToken  = dbEscClient($storeSubuser['station_token']);
+        $stationRow   = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT id FROM stations WHERE token = '$repairToken' AND is_active = 1 LIMIT 1"));
+        if ($stationRow) {
+            $repairStId  = (int)$stationRow['id'];
+            $repairName  = dbEscClient($storeSubuser['name']);
+            $repairEmail = dbEscClient($storeSubuser['email']);
+            $repairHash  = dbEscClient($storeSubuser['password_hash']);
+            $repairLang  = dbEscClient($storeSubuser['language'] ?? 'it');
+            $repairDays  = dbEscClient(preg_replace('/[^0-9,]/', '', $storeSubuser['access_days'] ?? '1,2,3,4,5,6,7'));
+            $repairStart = dbEscClient($storeSubuser['access_time_start'] ?? '00:00:00');
+            $repairEnd   = dbEscClient($storeSubuser['access_time_end']   ?? '23:59:59');
+            $repairResult = mysqli_query($clientConn,
+                "INSERT INTO station_users (station_id, name, email, password_hash, is_active, language, access_days, access_time_start, access_time_end)
+                 VALUES ($repairStId, '$repairName', '$repairEmail', '$repairHash', 1, '$repairLang', '$repairDays', '$repairStart', '$repairEnd')
+                 ON DUPLICATE KEY UPDATE name='$repairName', password_hash='$repairHash', is_active=1, language='$repairLang', access_days='$repairDays', access_time_start='$repairStart', access_time_end='$repairEnd'"
+            );
+            if (!$repairResult) {
+                error_log("[auth] Auto-repair subuser sync failed for email {$storeSubuser['email']}: " . mysqli_error($clientConn));
+            }
+            // Re-fetch after sync
+            $suRow = mysqli_fetch_assoc(mysqli_query($clientConn,
+                "SELECT su.*, s.station_name, s.token as station_token FROM station_users su
+                 JOIN stations s ON s.id = su.station_id
+                 WHERE su.email = '$emailEsc2' AND su.is_active = 1 AND s.is_active = 1 LIMIT 1"
+            ));
+        }
+    }
+}
+
 if ($suRow && verifyPassword($password, $suRow['password_hash'])) {
     // Check access rules
     $now = new DateTime();

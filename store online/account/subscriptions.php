@@ -94,11 +94,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $cDays  = mysqli_real_escape_string($clientConn, preg_replace('/[^0-9,]/', '', $suDays));
                                 $cStart = mysqli_real_escape_string($clientConn, $suStart);
                                 $cEnd   = mysqli_real_escape_string($clientConn, $suEnd);
-                                mysqli_query($clientConn, "
+                                $insertResult = mysqli_query($clientConn, "
                                     INSERT INTO station_users (station_id, name, email, password_hash, is_active, language, access_days, access_time_start, access_time_end)
                                     VALUES ($stId, '$cName', '$cEmail', '$cHash', 1, '$cLang', '$cDays', '$cStart', '$cEnd')
                                     ON DUPLICATE KEY UPDATE name='$cName', password_hash='$cHash', language='$cLang', access_days='$cDays', access_time_start='$cStart', access_time_end='$cEnd'
                                 ");
+                                if (!$insertResult) {
+                                    error_log("[add_subuser] INSERT station_users failed for subscription $subId / email $suEmail: " . mysqli_error($clientConn));
+                                }
                             }
                         }
                         mysqli_close($clientConn);
@@ -127,7 +130,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($stRow) {
                         $stId      = (int)$stRow['id'];
                         $newActive = $suData['is_active'] ? 1 : 0;
-                        mysqli_query($clientConn, "UPDATE station_users SET is_active = $newActive WHERE station_id = $stId AND email = '$cEmail'");
+                        $updateResult = mysqli_query($clientConn, "UPDATE station_users SET is_active = $newActive WHERE station_id = $stId AND email = '$cEmail'");
+                        if (!$updateResult) {
+                            error_log("[toggle_subuser] UPDATE station_users failed for station $stId / email {$suData['email']}: " . mysqli_error($clientConn));
+                        }
                     }
                     mysqli_close($clientConn);
                 }
@@ -153,7 +159,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stRow  = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT id FROM stations WHERE token = '$cToken'"));
                     if ($stRow) {
                         $stId = (int)$stRow['id'];
-                        mysqli_query($clientConn, "DELETE FROM station_users WHERE station_id = $stId AND email = '$cEmail'");
+                        $deleteResult = mysqli_query($clientConn, "DELETE FROM station_users WHERE station_id = $stId AND email = '$cEmail'");
+                        if (!$deleteResult) {
+                            error_log("[delete_subuser] DELETE station_users failed for station $stId / email {$suData['email']}: " . mysqli_error($clientConn));
+                        }
                     }
                     mysqli_close($clientConn);
                 }

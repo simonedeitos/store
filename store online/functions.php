@@ -371,10 +371,16 @@ function syncStationToClientDB($subscriptionId, $action = 'activate') {
     $subId = (int)$subscriptionId;
 
     $sub = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM client_subscriptions WHERE id = $subId"));
-    if (!$sub) return false;
+    if (!$sub) {
+        error_log("[syncStationToClientDB] Subscription $subId not found in store DB");
+        return false;
+    }
 
     $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
-    if (!$clientConn) return false;
+    if (!$clientConn) {
+        error_log("[syncStationToClientDB] Cannot connect to client DB: " . mysqli_connect_error());
+        return false;
+    }
 
     mysqli_set_charset($clientConn, 'utf8mb4');
     $cToken  = mysqli_real_escape_string($clientConn, $sub['station_token']);
@@ -382,13 +388,23 @@ function syncStationToClientDB($subscriptionId, $action = 'activate') {
     $cUserId = (int)$sub['user_id'];
 
     if ($action === 'activate') {
-        mysqli_query($clientConn, "
+        $result = mysqli_query($clientConn, "
             INSERT INTO stations (store_subscription_id, store_user_id, station_name, token, is_active)
             VALUES ($subId, $cUserId, '$cName', '$cToken', 1)
             ON DUPLICATE KEY UPDATE station_name='$cName', is_active=1
         ");
+        if (!$result) {
+            error_log("[syncStationToClientDB] INSERT/UPDATE stations failed for subscription $subId: " . mysqli_error($clientConn));
+            mysqli_close($clientConn);
+            return false;
+        }
     } else {
-        mysqli_query($clientConn, "UPDATE stations SET is_active = 0 WHERE token = '$cToken'");
+        $result = mysqli_query($clientConn, "UPDATE stations SET is_active = 0 WHERE token = '$cToken'");
+        if (!$result) {
+            error_log("[syncStationToClientDB] UPDATE stations (deactivate) failed for subscription $subId: " . mysqli_error($clientConn));
+            mysqli_close($clientConn);
+            return false;
+        }
     }
 
     mysqli_close($clientConn);

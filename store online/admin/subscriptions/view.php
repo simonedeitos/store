@@ -28,6 +28,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Sync con client DB
             if ($newStatus === 'active') {
                 syncStationToClientDB($id, 'activate');
+
+                // Also sync all existing subusers to the client DB
+                $subusersToSync = mysqli_query($conn, "SELECT * FROM client_station_subusers WHERE subscription_id = $id AND is_active = 1");
+                $subRow = mysqli_fetch_assoc(mysqli_query($conn, "SELECT station_token FROM client_subscriptions WHERE id = $id"));
+                if ($subRow) {
+                    $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
+                    if ($clientConn) {
+                        mysqli_set_charset($clientConn, 'utf8mb4');
+                        $cToken = mysqli_real_escape_string($clientConn, $subRow['station_token']);
+                        $stRow  = mysqli_fetch_assoc(mysqli_query($clientConn, "SELECT id FROM stations WHERE token = '$cToken'"));
+                        if ($stRow) {
+                            $stId = (int)$stRow['id'];
+                            while ($su = mysqli_fetch_assoc($subusersToSync)) {
+                                $cName  = mysqli_real_escape_string($clientConn, $su['name']);
+                                $cEmail = mysqli_real_escape_string($clientConn, $su['email']);
+                                $cHash  = mysqli_real_escape_string($clientConn, $su['password_hash']);
+                                $cLang  = mysqli_real_escape_string($clientConn, $su['language'] ?? 'it');
+                                $cDays  = mysqli_real_escape_string($clientConn, preg_replace('/[^0-9,]/', '', $su['access_days'] ?? '1,2,3,4,5,6,7'));
+                                $cStart = mysqli_real_escape_string($clientConn, $su['access_time_start'] ?? '00:00:00');
+                                $cEnd   = mysqli_real_escape_string($clientConn, $su['access_time_end']   ?? '23:59:59');
+                                mysqli_query($clientConn,
+                                    "INSERT INTO station_users (station_id, name, email, password_hash, is_active, language, access_days, access_time_start, access_time_end)
+                                     VALUES ($stId, '$cName', '$cEmail', '$cHash', 1, '$cLang', '$cDays', '$cStart', '$cEnd')
+                                     ON DUPLICATE KEY UPDATE name='$cName', password_hash='$cHash', is_active=1, language='$cLang', access_days='$cDays', access_time_start='$cStart', access_time_end='$cEnd'"
+                                );
+                            }
+                        }
+                        mysqli_close($clientConn);
+                    }
+                }
             } elseif (in_array($newStatus, ['suspended', 'expired', 'cancelled'])) {
                 syncStationToClientDB($id, 'deactivate');
             }
