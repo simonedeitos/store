@@ -24,6 +24,9 @@ class AudioManager {
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
         ];
+
+        this._micAnalyser = null;
+        this._micSource   = null;
     }
 
     setWS(ws) { this._ws = ws; }
@@ -107,6 +110,14 @@ class AudioManager {
             this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
             this.micActive = true;
 
+            // Connect mic stream to a dedicated analyser for VU meter
+            if (this.audioCtx) {
+                this._micSource   = this.audioCtx.createMediaStreamSource(this.localStream);
+                this._micAnalyser = this.audioCtx.createAnalyser();
+                this._micAnalyser.fftSize = 256;
+                this._micSource.connect(this._micAnalyser);
+            }
+
             // Add track to all existing peer connections
             this.peerConnections.forEach((pc) => {
                 this.localStream.getAudioTracks().forEach(track => {
@@ -129,6 +140,8 @@ class AudioManager {
             this.localStream.getTracks().forEach(t => t.stop());
             this.localStream = null;
         }
+        if (this._micSource)   { this._micSource.disconnect();   this._micSource   = null; }
+        if (this._micAnalyser) { this._micAnalyser.disconnect(); this._micAnalyser = null; }
         this.micActive = false;
         if (this._ws) {
             this._ws.send({ type: 'mic-status', active: false });
@@ -149,6 +162,14 @@ class AudioManager {
         const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
         const level = Math.min(100, (avg / 128) * 100);
         return { l: level, r: level * 0.95 };
+    }
+
+    getMicLevel() {
+        if (!this._micAnalyser) return 0;
+        const buf = new Uint8Array(this._micAnalyser.frequencyBinCount);
+        this._micAnalyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+        return Math.min(100, (avg / 128) * 100);
     }
 
     // --- Enumerate devices ---
