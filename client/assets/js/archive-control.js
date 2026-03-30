@@ -60,19 +60,20 @@ class ArchiveControl {
 
         const icon     = this._tab === 'music' ? 'bi-music-note' : 'bi-mic';
         const itemType = this._tab === 'music' ? 'music' : 'clip';
-        container.innerHTML = items.map(item => `
+        container.innerHTML = items.map(item => {
+            const label = item.artist ? `${this._esc(item.artist)} - ${this._esc(item.title)}` : this._esc(item.title);
+            return `
             <div class="archive-item" draggable="true" data-track-id="${item.trackId}" data-item-type="${itemType}">
                 <i class="archive-item-icon bi ${icon}"></i>
                 <div class="archive-item-info">
-                    <div class="archive-item-title">${this._esc(item.title)}</div>
-                    ${item.artist ? `<div class="archive-item-artist">${this._esc(item.artist)}</div>` : ''}
+                    <div class="archive-item-title">${label}</div>
                 </div>
                 <span class="archive-item-duration">${this._fmt(item.duration)}</span>
                 <button class="archive-item-add" data-track-id="${item.trackId}" data-item-type="${itemType}" title="${LanguageManager.get('archive.add_to_queue','Aggiungi alla coda')}">
                     <i class="bi bi-plus"></i>
                 </button>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
 
         // "+" button to add to end of queue
         container.querySelectorAll('.archive-item-add').forEach(btn => {
@@ -125,7 +126,7 @@ class ArchiveControl {
     _esc(str) { return String(str||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     _fmt(sec) {
         sec = Math.floor(sec || 0);
-        return `${Math.floor(sec/60)}:${(sec%60).toString().padStart(2,'0')}`;
+        return `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
     }
 }
 
