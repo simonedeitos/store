@@ -8,6 +8,7 @@ class ArchiveControl {
         this._clips  = [];
         this._tab    = 'music';
         this._search = '';
+        this._archiveSortable = null;
         this._init();
     }
 
@@ -85,17 +86,8 @@ class ArchiveControl {
             });
         });
 
-        // Drag events for drag-to-queue
+        // Double-click to add to end of queue
         container.querySelectorAll('.archive-item').forEach(el => {
-            el.addEventListener('dragstart', (e) => {
-                el.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', el.dataset.trackId);
-                e.dataTransfer.setData('item-type', el.dataset.itemType);
-                e.dataTransfer.effectAllowed = 'copy';
-            });
-            el.addEventListener('dragend', () => el.classList.remove('dragging'));
-
-            // Double-click to add to end of queue
             el.addEventListener('dblclick', () => {
                 const trackId = parseInt(el.dataset.trackId, 10); // trackId is a numeric int, not a Guid
                 const type    = el.dataset.itemType;
@@ -103,22 +95,17 @@ class ArchiveControl {
             });
         });
 
-        // Drop zone on playlist queue
-        const queueEl = document.getElementById('playlistQueue');
-        if (queueEl) {
-            queueEl.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                queueEl.classList.add('drag-over');
-            });
-            queueEl.addEventListener('dragleave', () => queueEl.classList.remove('drag-over'));
-            queueEl.addEventListener('drop', (e) => {
-                e.preventDefault();
-                queueEl.classList.remove('drag-over');
-                const trackId = parseInt(e.dataTransfer.getData('text/plain'), 10); // trackId is a numeric int, not a Guid
-                const type    = e.dataTransfer.getData('item-type') || 'music';
-                if (this.ws && trackId) {
-                    this.ws.sendCommand('queue_add', { type, trackId });
-                }
+        // Sortable.js on archive list: allows drag-to-queue with position support
+        if (this._archiveSortable) {
+            this._archiveSortable.destroy();
+            this._archiveSortable = null;
+        }
+        if (typeof Sortable !== 'undefined') {
+            this._archiveSortable = Sortable.create(container, {
+                group: { name: 'archive', pull: 'clone', put: false },
+                sort: false,
+                filter: '.archive-item-add',
+                preventOnFilter: false,
             });
         }
     }
