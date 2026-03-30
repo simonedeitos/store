@@ -17,28 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'confirm') {
         mysqli_query($conn, "UPDATE orders SET status = 'confirmed' WHERE id = $id");
 
-        // Activate pending subscriptions for this user and sync station to client DB
-        $pendingSubs = mysqli_query($conn, "SELECT cs.* FROM client_subscriptions cs WHERE cs.user_id = " . (int)$order['user_id'] . " AND cs.status = 'pending'");
-        while ($pSub = mysqli_fetch_assoc($pendingSubs)) {
-            $pSubId = (int)$pSub['id'];
-            mysqli_query($conn, "UPDATE client_subscriptions SET status = 'active', started_at = NOW() WHERE id = $pSubId");
+        // Attiva sottoscrizioni pending di questo utente (collegate a quest'ordine)
+        activatePendingSubscriptions((int)$order['user_id'], $id);
 
-            // Sync station to client DB
-            $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
-            if ($clientConn) {
-                mysqli_set_charset($clientConn, 'utf8mb4');
-                $cToken  = mysqli_real_escape_string($clientConn, $pSub['station_token']);
-                $cName   = mysqli_real_escape_string($clientConn, $pSub['radio_name']);
-                $cUserId = (int)$pSub['user_id'];
-                mysqli_query($clientConn, "
-                    INSERT INTO stations (store_subscription_id, store_user_id, station_name, token, is_active)
-                    VALUES ($pSubId, $cUserId, '$cName', '$cToken', 1)
-                    ON DUPLICATE KEY UPDATE station_name='$cName', is_active=1
-                ");
-                mysqli_close($clientConn);
-            }
-        }
-        
         // Prepara dati email
         $orderData = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM orders WHERE id = $id"));
         $userData = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM users WHERE id = " . (int)$order['user_id']));

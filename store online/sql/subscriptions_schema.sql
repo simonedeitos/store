@@ -15,13 +15,18 @@ CREATE TABLE IF NOT EXISTS client_subscription_plans (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- User subscriptions
+-- Per database esistenti, eseguire:
+-- ALTER TABLE client_subscriptions MODIFY COLUMN status ENUM('pending','active','suspended','expired','cancelled') DEFAULT 'pending';
+-- ALTER TABLE client_subscriptions ADD COLUMN order_id INT NULL AFTER user_id;
+-- ALTER TABLE client_subscriptions ADD INDEX idx_order (order_id);
 CREATE TABLE IF NOT EXISTS client_subscriptions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    order_id INT NULL,
     plan_id INT NOT NULL,
     radio_name VARCHAR(255) NOT NULL,
     station_token VARCHAR(64) NOT NULL UNIQUE,
-    status ENUM('active','suspended','expired','cancelled') DEFAULT 'active',
+    status ENUM('pending','active','suspended','expired','cancelled') DEFAULT 'pending',
     started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     expires_at DATETIME NOT NULL,
     auto_renew TINYINT(1) DEFAULT 1,
@@ -37,7 +42,8 @@ CREATE TABLE IF NOT EXISTS client_subscriptions (
     FOREIGN KEY (plan_id) REFERENCES client_subscription_plans(id),
     INDEX idx_user (user_id),
     INDEX idx_status (status),
-    INDEX idx_expires (expires_at)
+    INDEX idx_expires (expires_at),
+    INDEX idx_order (order_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Subusers (station speakers) - managed by the station owner

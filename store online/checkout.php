@@ -105,8 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $radioNameEsc = dbEsc($radioName);
             mysqli_query($conn, "
-                INSERT INTO client_subscriptions (user_id, plan_id, radio_name, station_token, status, expires_at)
-                VALUES ($userId, $planId, '$radioNameEsc', '$tokenEsc', 'pending', '$expiresAt')
+                INSERT INTO client_subscriptions (user_id, order_id, plan_id, radio_name, station_token, status, expires_at)
+                VALUES ($userId, $orderId, $planId, '$radioNameEsc', '$tokenEsc', 'pending', '$expiresAt')
             ");
 
             unset($_SESSION['pending_subscription']);
