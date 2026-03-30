@@ -16,10 +16,15 @@ $error   = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action === 'toggle_status') {
+        $allowed = ['active', 'suspended', 'expired', 'cancelled'];
         $newStatus = $_POST['new_status'] ?? 'suspended';
-        $newStatusEsc = dbEsc($newStatus);
-        mysqli_query($conn, "UPDATE client_subscriptions SET status = '$newStatusEsc' WHERE id = $id");
-        $message = 'Stato aggiornato.';
+        if (!in_array($newStatus, $allowed, true)) {
+            $error = 'Stato non valido.';
+        } else {
+            $newStatusEsc = dbEsc($newStatus);
+            mysqli_query($conn, "UPDATE client_subscriptions SET status = '$newStatusEsc' WHERE id = $id");
+            $message = 'Stato aggiornato.';
+        }
     } elseif ($action === 'extend') {
         $days = (int)($_POST['extend_days'] ?? 30);
         mysqli_query($conn, "UPDATE client_subscriptions SET expires_at = DATE_ADD(expires_at, INTERVAL $days DAY) WHERE id = $id");
@@ -28,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $admin     = getCurrentAdmin();
         $adminId   = (int)($admin['id'] ?? 0);
         $adminName = $admin['username'] ?? 'Admin';
-        $jwtSecret = 'airdirector-admin-sso-secret-2025';
+        $jwtSecret = CLIENT_ADMIN_JWT_SECRET;
         $header    = rtrim(strtr(base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT'])), '+/', '-_'), '=');
         $body      = rtrim(strtr(base64_encode(json_encode([
             'admin_id'    => $adminId,

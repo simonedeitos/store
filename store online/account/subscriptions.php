@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $subId = mysqli_insert_id($conn);
 
                 // Sync station to client DB
-                $clientConn = mysqli_connect('127.0.0.1', '4362062795_adclient', '^4ir;Dir3ctOr-database=2025%', '4362062795_adclient', '3306');
+                $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
                 if ($clientConn) {
                     mysqli_set_charset($clientConn, 'utf8mb4');
                     $cRadioName = mysqli_real_escape_string($clientConn, $radioName);
@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
 
                     // Sync subuser to client DB
-                    $clientConn = mysqli_connect('127.0.0.1', '4362062795_adclient', '^4ir;Dir3ctOr-database=2025%', '4362062795_adclient', '3306');
+                    $clientConn = mysqli_connect(CLIENT_DB_HOST, CLIENT_DB_USER, CLIENT_DB_PASS, CLIENT_DB_NAME, CLIENT_DB_PORT);
                     if ($clientConn) {
                         mysqli_set_charset($clientConn, 'utf8mb4');
                         $tokenRow = mysqli_fetch_assoc(mysqli_query($conn, "SELECT station_token FROM client_subscriptions WHERE id = $subId"));
