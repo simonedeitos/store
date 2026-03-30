@@ -22,7 +22,7 @@ define('STORE_DB_PASS', '^4ir;Dir3ct0r-database=2025%');
 // --- URLs ---
 define('CLIENT_SITE_URL', 'https://client.airdirector.app');
 define('STORE_SITE_URL', 'https://store.airdirector.app');
-define('WS_SERVER_URL', 'wss://client.airdirector.app/ws');
+define('WS_SERVER_URL', 'wss://store-uglh.onrender.com');
 define('CLIENT_NAME', 'AirDirector Client');
 
 // --- JWT Secret for admin SSO ---
