@@ -54,20 +54,9 @@ class AudioManager {
         if (!base64) return;
         try {
             if (!this.audioCtx) {
-                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                this._initAudioChain();
                 this._nextPlaybackTime = 0;
                 this._pendingMp3 = null;
-                if (!this.analyser) {
-                    this.analyser = this.audioCtx.createAnalyser();
-                    this.analyser.fftSize = 256;
-                }
-                // Create gain node for mute control
-                this._gainNode = this.audioCtx.createGain();
-                this._gainNode.gain.value = this._muted ? 0 : 1;
-                if (this.analyser) {
-                    this.analyser.connect(this._gainNode);
-                }
-                this._gainNode.connect(this.audioCtx.destination);
             }
             // Resume context if suspended (browser autoplay policy)
             if (this.audioCtx.state === 'suspended') {
@@ -266,16 +255,20 @@ class AudioManager {
         }
     }
 
-    // --- Audio level analyser ---
-    initAnalyser() {
+    // --- Audio chain setup (shared between initAnalyser and receiveAudioData) ---
+    _initAudioChain() {
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         this.analyser = this.audioCtx.createAnalyser();
         this.analyser.fftSize = 256;
-        // Create gain node for mute control
         this._gainNode = this.audioCtx.createGain();
         this._gainNode.gain.value = this._muted ? 0 : 1;
         this.analyser.connect(this._gainNode);
         this._gainNode.connect(this.audioCtx.destination);
+    }
+
+    // --- Audio level analyser ---
+    initAnalyser() {
+        this._initAudioChain();
     }
 
     getLevel() {
