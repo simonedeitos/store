@@ -28,42 +28,86 @@ class AudioManager {
         this._micAnalyser = null;
         this._micSource   = null;
         this._mediaRecorder = null;
+
+        // Streaming MP3 playback state
+        this._nextPlaybackTime = 0;
+        this._pendingMp3       = null;
+        this._muted            = false;
+        this._gainNode         = null;
     }
 
     setWS(ws) { this._ws = ws; }
     setQuality(preset) { this._quality = this._qualityPresets[preset] ? preset : 'medium'; }
 
-    // --- Receive audio from AirDirector (base64 JSON protocol) ---
+    // --- Mute/unmute received audio from AirDirector ---
+    setMuted(muted) {
+        this._muted = !!muted;
+        if (this._gainNode) {
+            this._gainNode.gain.value = this._muted ? 0 : 1;
+        }
+    }
+
+    get isMuted() { return this._muted; }
+
+    // --- Receive streaming MP3 audio from AirDirector (base64 JSON protocol) ---
     async receiveAudioData(base64) {
         if (!base64) return;
         try {
             if (!this.audioCtx) {
-                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (!this.analyser) {
-                    this.analyser = this.audioCtx.createAnalyser();
-                    this.analyser.fftSize = 256;
-                }
+                this._initAudioChain();
+                this._nextPlaybackTime = 0;
+                this._pendingMp3 = null;
             }
             // Resume context if suspended (browser autoplay policy)
             if (this.audioCtx.state === 'suspended') {
                 await this.audioCtx.resume();
             }
 
+            // Decode base64 → binary
             const binary = atob(base64);
-            const bytes  = new Uint8Array(binary.length);
+            const incoming = new Uint8Array(binary.length);
             for (let i = 0; i < binary.length; i++) {
-                bytes[i] = binary.charCodeAt(i);
+                incoming[i] = binary.charCodeAt(i);
             }
-            const audioBuffer = await this.audioCtx.decodeAudioData(bytes.buffer);
-            const source = this.audioCtx.createBufferSource();
-            source.buffer = audioBuffer;
-            if (this.analyser) {
-                source.connect(this.analyser);
-                this.analyser.connect(this.audioCtx.destination);
+
+            // Prepend any pending data from a previous failed decode (partial MP3 frame)
+            let data;
+            if (this._pendingMp3 && this._pendingMp3.length > 0) {
+                data = new Uint8Array(this._pendingMp3.length + incoming.length);
+                data.set(this._pendingMp3, 0);
+                data.set(incoming, this._pendingMp3.length);
+                this._pendingMp3 = null;
             } else {
-                source.connect(this.audioCtx.destination);
+                data = incoming;
             }
-            source.start(0);
+
+            try {
+                // decodeAudioData detaches the ArrayBuffer, so pass a copy
+                const audioBuffer = await this.audioCtx.decodeAudioData(data.buffer.slice(0));
+                const source = this.audioCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                // Route: source → analyser → gainNode → destination
+                if (this.analyser) {
+                    source.connect(this.analyser);
+                } else {
+                    source.connect(this._gainNode);
+                }
+
+                // Schedule playback at the correct time to avoid gaps and overlaps
+                const now = this.audioCtx.currentTime;
+                if (this._nextPlaybackTime < now) {
+                    this._nextPlaybackTime = now;
+                }
+                source.start(this._nextPlaybackTime);
+                this._nextPlaybackTime += audioBuffer.duration;
+            } catch (decErr) {
+                // Not enough data for a complete MP3 frame; accumulate for next chunk.
+                // Discard if over 64KB to avoid unbounded growth on wrong-format data.
+                const maxPendingSize = 64 * 1024;
+                if (data.length < maxPendingSize) {
+                    this._pendingMp3 = data;
+                }
+            }
         } catch(e) {
             console.error('[AudioManager] receiveAudioData error:', e);
         }
@@ -211,11 +255,20 @@ class AudioManager {
         }
     }
 
-    // --- Audio level analyser ---
-    initAnalyser() {
+    // --- Audio chain setup (shared between initAnalyser and receiveAudioData) ---
+    _initAudioChain() {
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         this.analyser = this.audioCtx.createAnalyser();
         this.analyser.fftSize = 256;
+        this._gainNode = this.audioCtx.createGain();
+        this._gainNode.gain.value = this._muted ? 0 : 1;
+        this.analyser.connect(this._gainNode);
+        this._gainNode.connect(this.audioCtx.destination);
+    }
+
+    // --- Audio level analyser ---
+    initAnalyser() {
+        this._initAudioChain();
     }
 
     getLevel() {

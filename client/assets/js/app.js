@@ -81,6 +81,13 @@ async function initApp() {
         });
     }
 
+    // Apply interaction lock: when admin and interaction OFF, disable controls
+    if (cfg.isAdmin && !cfg.adminInteraction) {
+        document.getElementById('panelPlayer')?.classList.add('admin-readonly');
+        document.getElementById('panelPlaylist')?.classList.add('admin-readonly');
+        document.getElementById('panelArchive')?.classList.add('admin-readonly');
+    }
+
     // 7. Station switcher for admin
     document.querySelectorAll('.admin-station-switch').forEach(el => {
         el.addEventListener('click', async (e) => {

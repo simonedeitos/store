@@ -18,6 +18,8 @@ class PlaylistQueue {
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             group: { name: 'playlist', put: ['archive'] },
+            filter: '.queue-item-remove',
+            preventOnFilter: false,
             onEnd: (evt) => {
                 // Reorder in local array
                 const moved = this._items.splice(evt.oldIndex, 1)[0];

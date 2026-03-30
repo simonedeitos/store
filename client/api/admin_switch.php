@@ -13,6 +13,14 @@ if (!isClientLoggedIn() || !isClientAdmin()) {
 }
 
 $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+
+// Toggle admin interaction mode
+if (!empty($input['toggle_interaction'])) {
+    $_SESSION['admin_interaction'] = !($_SESSION['admin_interaction'] ?? false);
+    echo json_encode(['success' => true, 'interaction' => $_SESSION['admin_interaction']]);
+    exit;
+}
+
 $stationId = (int)($input['station_id'] ?? 0);
 
 if (!$stationId) {
