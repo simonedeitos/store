@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ])), '+/', '-_'), '=');
         $sig    = rtrim(strtr(base64_encode(hash_hmac('sha256', "$header.$body", $jwtSecret, true)), '+/', '-_'), '=');
         $token  = "$header.$body.$sig";
-        header('Location: https://client.airdirector.app/admin/?token=' . urlencode($token));
+        header('Location: ' . CLIENT_SITE_URL . '/admin/?token=' . urlencode($token));
         exit;
     }
 }

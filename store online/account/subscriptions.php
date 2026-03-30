@@ -215,7 +215,7 @@ include __DIR__ . '/../includes/header.php';
                     <?= ucfirst($sub['status']) ?>
                 </span>
                 <?php if ($sub['status'] === 'active'): ?>
-                <a href="https://client.airdirector.app" target="_blank" class="btn btn-sm btn-primary">
+                <a href="<?= CLIENT_SITE_URL ?>" target="_blank" class="btn btn-sm btn-primary">
                     <i class="bi bi-box-arrow-up-right me-1"></i>Apri Client
                 </a>
                 <?php endif; ?>

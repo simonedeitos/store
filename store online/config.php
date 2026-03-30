@@ -26,6 +26,7 @@ define('CLIENT_ADMIN_JWT_SECRET', 'airdirector-admin-sso-secret-2025');
 // Costanti generali
 define('SITE_NAME', 'AirDirector Store');
 define('SITE_URL', 'https://store.airdirector.app');
+define('CLIENT_SITE_URL', 'https://client.airdirector.app');
 
 // Percorso base
 define('BASE_PATH', __DIR__);
