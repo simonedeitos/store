@@ -115,6 +115,10 @@ wss.on('connection', (ws, req) => {
             case 'player_state':
             case 'playlist_queue':
             case 'archive_list':
+            case 'archive':
+            case 'music_archive':
+            case 'clip_archive':
+            case 'audio_data':
             case 'countdown':
                 currentRoom.sendToClients(msg);
                 break;
@@ -157,8 +161,13 @@ wss.on('connection', (ws, req) => {
                 break;
 
             default:
-                // Forward unknown messages to whole room
-                currentRoom.broadcast(msg, ws);
+                // New protocol: messages with 'command' key from browser clients go to AirDirector
+                if (msg.command && senderInfo?.type !== 'airdirector') {
+                    currentRoom.sendToAirDirector(msg);
+                } else {
+                    // Forward unknown messages to whole room
+                    currentRoom.broadcast(msg, ws);
+                }
         }
     });
 

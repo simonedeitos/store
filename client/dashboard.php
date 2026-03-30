@@ -181,70 +181,68 @@ if ($isAdmin) {
             </div><!-- end player-queue-col -->
 
             <!-- Archive Control Panel -->
-            <div class="dashboard-panel panel-archive" id="panelArchive">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <i class="bi bi-collection-play me-2"></i>
-                        <span data-lang="archive.title">Archivio</span>
-                    </div>
-                </div>
-                <div class="panel-body">
-                    <!-- Tabs -->
-                    <ul class="nav nav-tabs nav-tabs-dark mb-3" id="archiveTabs">
-                        <li class="nav-item">
-                            <button class="nav-link active" id="tabMusic" data-tab="music">
-                                <i class="bi bi-music-note me-1"></i>
-                                <span data-lang="archive.music">Musica</span>
-                            </button>
-                        </li>
-                        <li class="nav-item">
-                            <button class="nav-link" id="tabClips" data-tab="clips">
-                                <i class="bi bi-mic me-1"></i>
-                                <span data-lang="archive.clips">Clips</span>
-                            </button>
-                        </li>
-                    </ul>
-
-                    <!-- Search -->
-                    <div class="input-group mb-3">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="archiveSearch" placeholder="Cerca..." data-lang-placeholder="archive.search_placeholder">
-                    </div>
-
-                    <!-- Archive List -->
-                    <div id="archiveList" class="archive-list">
-                        <div class="text-center text-muted py-3" data-lang="archive.loading">Caricamento archivio...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Row 2: Countdown -->
-        <div class="dashboard-row">
-
-            <!-- Countdown Panel -->
-            <div class="dashboard-panel panel-countdown" id="panelCountdown">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <i class="bi bi-alarm me-2"></i>
-                        <span data-lang="countdown.title">Countdown</span>
-                    </div>
-                </div>
-                <div class="panel-body">
-                    <div class="countdown-grid">
-                        <div class="countdown-item">
-                            <div class="countdown-label" data-lang="countdown.next_schedule">Prossima Schedulazione</div>
-                            <div class="countdown-value" id="countdownSchedule">--:--:--</div>
-                            <div class="countdown-name text-muted small" id="scheduleName"></div>
+            <div class="archive-countdown-col">
+                <div class="dashboard-panel panel-archive" id="panelArchive">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="bi bi-collection-play me-2"></i>
+                            <span data-lang="archive.title">Archivio</span>
                         </div>
-                        <div class="countdown-divider"></div>
-                        <div class="countdown-item">
-                            <div class="countdown-label" data-lang="countdown.next_ad">Prossima Pubblicità</div>
-                            <div class="countdown-value countdown-ad" id="countdownAd">--:--:--</div>
+                    </div>
+                    <div class="panel-body">
+                        <!-- Tabs -->
+                        <ul class="nav nav-tabs nav-tabs-dark mb-3" id="archiveTabs">
+                            <li class="nav-item">
+                                <button class="nav-link active" id="tabMusic" data-tab="music">
+                                    <i class="bi bi-music-note me-1"></i>
+                                    <span data-lang="archive.music">Musica</span>
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="tabClips" data-tab="clips">
+                                    <i class="bi bi-mic me-1"></i>
+                                    <span data-lang="archive.clips">Clips</span>
+                                </button>
+                            </li>
+                        </ul>
+
+                        <!-- Search -->
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="archiveSearch" placeholder="Cerca..." data-lang-placeholder="archive.search_placeholder">
+                        </div>
+
+                        <!-- Archive List -->
+                        <div id="archiveList" class="archive-list">
+                            <div class="text-center text-muted py-3" data-lang="archive.loading">Caricamento archivio...</div>
                         </div>
                     </div>
                 </div>
-            </div>
+
+                <!-- Countdown Panel (under archive) -->
+                <div class="dashboard-panel panel-countdown" id="panelCountdown">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="bi bi-alarm me-2"></i>
+                            <span data-lang="countdown.title">Countdown</span>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="countdown-grid">
+                            <div class="countdown-item">
+                                <div class="countdown-label" data-lang="countdown.next_schedule">Prossima Schedulazione</div>
+                                <div class="countdown-value" id="countdownSchedule">--:--:--</div>
+                                <div class="countdown-name text-muted small" id="scheduleName"></div>
+                            </div>
+                            <div class="countdown-divider"></div>
+                            <div class="countdown-item">
+                                <div class="countdown-label" data-lang="countdown.next_ad">Prossima Pubblicità</div>
+                                <div class="countdown-value countdown-ad" id="countdownAd">--:--:--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- end archive-countdown-col -->
         </div>
 
         <!-- Audio Monitor Bar -->

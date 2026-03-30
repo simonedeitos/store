@@ -116,7 +116,17 @@ function handleWSMessage(msg) {
             playlistQueue?.update(msg.data);
             break;
         case 'archive_list':
+        case 'archive':
             archiveControl?.update(msg.data);
+            break;
+        case 'music_archive':
+            archiveControl?.updateMusic(msg.data || msg.tracks || []);
+            break;
+        case 'clip_archive':
+            archiveControl?.updateClips(msg.data || msg.tracks || []);
+            break;
+        case 'audio_data':
+            audioManager?.receiveAudioData(msg.data);
             break;
         case 'countdown':
             countdown?.update(msg.data);

@@ -32,9 +32,19 @@ class ArchiveControl {
     }
 
     update(data) {
-        if (data.music) this._music = data.music;
-        if (data.clips) this._clips = data.clips;
+        if (data && data.music !== undefined) this._music = data.music || [];
+        if (data && data.clips !== undefined) this._clips = data.clips || [];
         this._render();
+    }
+
+    updateMusic(tracks) {
+        this._music = tracks || [];
+        if (this._tab === 'music') this._render();
+    }
+
+    updateClips(tracks) {
+        this._clips = tracks || [];
+        if (this._tab === 'clips') this._render();
     }
 
     _render() {
@@ -48,33 +58,48 @@ class ArchiveControl {
             return;
         }
 
-        const icon = this._tab === 'music' ? 'bi-music-note' : 'bi-mic';
-        container.innerHTML = items.map(item => `
-            <div class="archive-item" draggable="true" data-item-id="${item.id}" data-item-type="${this._tab}">
+        const icon     = this._tab === 'music' ? 'bi-music-note' : 'bi-mic';
+        const itemType = this._tab === 'music' ? 'music' : 'clip';
+        container.innerHTML = items.map(item => {
+            const label = item.artist ? `${this._esc(item.artist)} - ${this._esc(item.title)}` : this._esc(item.title);
+            return `
+            <div class="archive-item" draggable="true" data-track-id="${item.trackId}" data-item-type="${itemType}">
                 <i class="archive-item-icon bi ${icon}"></i>
                 <div class="archive-item-info">
-                    <div class="archive-item-title">${this._esc(item.title)}</div>
-                    ${item.artist ? `<div class="archive-item-artist">${this._esc(item.artist)}</div>` : ''}
+                    <div class="archive-item-title">${label}</div>
                 </div>
                 <span class="archive-item-duration">${this._fmt(item.duration)}</span>
-            </div>
-        `).join('');
+                <button class="archive-item-add" data-track-id="${item.trackId}" data-item-type="${itemType}" title="${LanguageManager.get('archive.add_to_queue','Aggiungi alla coda')}">
+                    <i class="bi bi-plus"></i>
+                </button>
+            </div>`;
+        }).join('');
+
+        // "+" button to add to end of queue
+        container.querySelectorAll('.archive-item-add').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const trackId  = parseInt(btn.dataset.trackId, 10); // trackId is a numeric int, not a Guid
+                const type     = btn.dataset.itemType;
+                if (this.ws) this.ws.sendCommand('queue_add', { type, trackId });
+            });
+        });
 
         // Drag events for drag-to-queue
         container.querySelectorAll('.archive-item').forEach(el => {
             el.addEventListener('dragstart', (e) => {
                 el.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', el.dataset.itemId);
-                e.dataTransfer.setData('item-type', this._tab);
+                e.dataTransfer.setData('text/plain', el.dataset.trackId);
+                e.dataTransfer.setData('item-type', el.dataset.itemType);
                 e.dataTransfer.effectAllowed = 'copy';
             });
             el.addEventListener('dragend', () => el.classList.remove('dragging'));
 
             // Double-click to add to end of queue
             el.addEventListener('dblclick', () => {
-                if (this.ws) {
-                    this.ws.sendCommand('queue_add', { item_id: parseInt(el.dataset.itemId, 10), position: -1 });
-                }
+                const trackId = parseInt(el.dataset.trackId, 10); // trackId is a numeric int, not a Guid
+                const type    = el.dataset.itemType;
+                if (this.ws) this.ws.sendCommand('queue_add', { type, trackId });
             });
         });
 
@@ -89,9 +114,10 @@ class ArchiveControl {
             queueEl.addEventListener('drop', (e) => {
                 e.preventDefault();
                 queueEl.classList.remove('drag-over');
-                const itemId = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                if (this.ws && itemId) {
-                    this.ws.sendCommand('queue_add', { item_id: itemId, position: -1 });
+                const trackId = parseInt(e.dataTransfer.getData('text/plain'), 10); // trackId is a numeric int, not a Guid
+                const type    = e.dataTransfer.getData('item-type') || 'music';
+                if (this.ws && trackId) {
+                    this.ws.sendCommand('queue_add', { type, trackId });
                 }
             });
         }
@@ -100,7 +126,7 @@ class ArchiveControl {
     _esc(str) { return String(str||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     _fmt(sec) {
         sec = Math.floor(sec || 0);
-        return `${Math.floor(sec/60)}:${(sec%60).toString().padStart(2,'0')}`;
+        return `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`;
     }
 }
 
