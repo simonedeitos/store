@@ -20,6 +20,8 @@ class AudioMonitor {
             if (this.ws) this.ws.sendCommand('skip');
         });
 
+        document.getElementById('btnMuteAudio')?.addEventListener('click', () => this._toggleMute());
+
         document.querySelectorAll('.quality-option').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -89,6 +91,18 @@ class AudioMonitor {
         btn && (btn.querySelector('[data-lang]') || btn).setAttribute('data-lang', 'audio.send_mic');
         this._hideMicUI();
         if (window.LanguageManager) window.LanguageManager.apply();
+    }
+
+    _toggleMute() {
+        if (!this.audioManager) return;
+        const muted = !this.audioManager.isMuted;
+        this.audioManager.setMuted(muted);
+        const btn = document.getElementById('btnMuteAudio');
+        const icon = document.getElementById('muteIcon');
+        if (btn) btn.classList.toggle('muted', muted);
+        if (icon) {
+            icon.className = muted ? 'bi bi-volume-mute-fill me-1' : 'bi bi-volume-up-fill me-1';
+        }
     }
 
     _showMicUI() {

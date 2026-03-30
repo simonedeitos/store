@@ -32,10 +32,22 @@ class AudioManager {
         // Streaming MP3 playback state
         this._nextPlaybackTime = 0;
         this._pendingMp3       = null;
+        this._muted            = false;
+        this._gainNode         = null;
     }
 
     setWS(ws) { this._ws = ws; }
     setQuality(preset) { this._quality = this._qualityPresets[preset] ? preset : 'medium'; }
+
+    // --- Mute/unmute received audio from AirDirector ---
+    setMuted(muted) {
+        this._muted = !!muted;
+        if (this._gainNode) {
+            this._gainNode.gain.value = this._muted ? 0 : 1;
+        }
+    }
+
+    get isMuted() { return this._muted; }
 
     // --- Receive streaming MP3 audio from AirDirector (base64 JSON protocol) ---
     async receiveAudioData(base64) {
@@ -49,6 +61,13 @@ class AudioManager {
                     this.analyser = this.audioCtx.createAnalyser();
                     this.analyser.fftSize = 256;
                 }
+                // Create gain node for mute control
+                this._gainNode = this.audioCtx.createGain();
+                this._gainNode.gain.value = this._muted ? 0 : 1;
+                if (this.analyser) {
+                    this.analyser.connect(this._gainNode);
+                }
+                this._gainNode.connect(this.audioCtx.destination);
             }
             // Resume context if suspended (browser autoplay policy)
             if (this.audioCtx.state === 'suspended') {
@@ -78,11 +97,11 @@ class AudioManager {
                 const audioBuffer = await this.audioCtx.decodeAudioData(data.buffer.slice(0));
                 const source = this.audioCtx.createBufferSource();
                 source.buffer = audioBuffer;
+                // Route: source → analyser → gainNode → destination
                 if (this.analyser) {
                     source.connect(this.analyser);
-                    this.analyser.connect(this.audioCtx.destination);
                 } else {
-                    source.connect(this.audioCtx.destination);
+                    source.connect(this._gainNode);
                 }
 
                 // Schedule playback at the correct time to avoid gaps and overlaps
@@ -252,6 +271,11 @@ class AudioManager {
         this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         this.analyser = this.audioCtx.createAnalyser();
         this.analyser.fftSize = 256;
+        // Create gain node for mute control
+        this._gainNode = this.audioCtx.createGain();
+        this._gainNode.gain.value = this._muted ? 0 : 1;
+        this.analyser.connect(this._gainNode);
+        this._gainNode.connect(this.audioCtx.destination);
     }
 
     getLevel() {

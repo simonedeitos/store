@@ -276,7 +276,11 @@ if ($isAdmin) {
                 </button>
                 <button class="btn btn-sm btn-start-skip" id="btnStartSkip" style="display:none" title="Stop Mic &amp; Skip">
                     <i class="bi bi-skip-end-fill me-1"></i>
-                    START &amp; SKIP
+                    <span data-lang="audio.stop_mic_skip">STOP MIC &amp; SKIP</span>
+                </button>
+                <button class="btn btn-sm btn-mute" id="btnMuteAudio" title="Mute Audio">
+                    <i class="bi bi-volume-up-fill me-1" id="muteIcon"></i>
+                    <span data-lang="audio.mute" id="muteLabel">AUDIO</span>
                 </button>
                 <select class="form-select form-select-sm ms-2 me-2" id="audioInputSelect" style="width:auto">
                     <option data-lang="audio.default_input">Microfono predefinito</option>
