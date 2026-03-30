@@ -9,7 +9,10 @@ class PlayerControl {
         this._position= 0;
         this._duration= 0;
         this._mode    = 'auto';
+        this._introEnd= 0;
         this._timer   = null;
+
+        this._INTRO_URGENT_SECS = 5;
 
         this._init();
     }
@@ -21,13 +24,6 @@ class PlayerControl {
         document.getElementById('btnSkip')?.addEventListener('click', () => this._command('skip'));
         document.getElementById('btnModeAuto')?.addEventListener('click', () => this._setMode('auto'));
         document.getElementById('btnModeManual')?.addEventListener('click', () => this._setMode('manual'));
-
-        const vol = document.getElementById('volumeSlider');
-        if (vol) {
-            vol.addEventListener('input', () => {
-                document.getElementById('volumeValue').textContent = vol.value + '%';
-            });
-        }
     }
 
     _command(action) {
@@ -62,8 +58,9 @@ class PlayerControl {
         this._status   = data.status   || 'stopped';
         this._position = data.position || 0;
         this._duration = data.duration || 0;
-        if (data.track !== undefined)   this._track = data.track;
-        if (data.mode  !== undefined)   { this._mode = data.mode; this._updateModeUI(); }
+        if (data.track     !== undefined) this._track    = data.track;
+        if (data.mode      !== undefined) { this._mode = data.mode; this._updateModeUI(); }
+        if (data.intro_end !== undefined) this._introEnd = data.intro_end || 0;
 
         // Update UI
         const titleEl   = document.getElementById('nowPlayingTitle');
@@ -86,6 +83,8 @@ class PlayerControl {
             statusBadge.innerHTML = `<span class="badge ${statusColors[this._status] || 'bg-secondary'}">${this._status}</span>`;
         }
 
+        this._updateIntroCountdown();
+
         // Start/stop local progress timer
         if (this._status === 'playing') {
             if (!this._timer) {
@@ -94,12 +93,26 @@ class PlayerControl {
                     const p2 = this._duration > 0 ? (this._position / this._duration) * 100 : 0;
                     if (fill) fill.style.width = p2 + '%';
                     if (timeEl) timeEl.textContent = this._formatTime(this._position);
+                    this._updateIntroCountdown();
                 }, 1000);
             }
         } else {
             clearInterval(this._timer);
             this._timer = null;
         }
+    }
+
+    _updateIntroCountdown() {
+        const el = document.getElementById('introCountdown');
+        if (!el) return;
+        if (!this._introEnd || this._introEnd <= 0 || this._status === 'stopped') {
+            el.style.display = 'none';
+            return;
+        }
+        const remaining = Math.max(0, this._introEnd - this._position);
+        el.style.display = 'inline-flex';
+        el.textContent   = `INTRO: ${this._formatTime(remaining)}`;
+        el.classList.toggle('urgent', remaining > 0 && remaining <= this._INTRO_URGENT_SECS);
     }
 
     _formatTime(sec) {

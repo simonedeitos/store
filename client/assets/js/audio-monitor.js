@@ -15,6 +15,11 @@ class AudioMonitor {
 
         document.getElementById('btnSendMic')?.addEventListener('click', () => this._toggleMic());
 
+        document.getElementById('btnStartSkip')?.addEventListener('click', () => {
+            this._deactivateMic();
+            if (this.ws) this.ws.sendCommand('skip');
+        });
+
         document.querySelectorAll('.quality-option').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -58,19 +63,17 @@ class AudioMonitor {
     }
 
     async _toggleMic() {
-        const btn = document.getElementById('btnSendMic');
         if (this._micActive) {
-            this.audioManager?.stopMicrophone();
-            this._micActive = false;
-            btn?.classList.remove('active');
-            btn && (btn.querySelector('[data-lang]') || btn).setAttribute('data-lang', 'audio.send_mic');
+            this._deactivateMic();
         } else {
             try {
                 const inputDeviceId = document.getElementById('audioInputSelect')?.value || null;
                 await this.audioManager?.startMicrophone(inputDeviceId);
                 this._micActive = true;
+                const btn = document.getElementById('btnSendMic');
                 btn?.classList.add('active');
                 btn && (btn.querySelector('[data-lang]') || btn).setAttribute('data-lang', 'audio.stop_mic');
+                this._showMicUI();
                 if (window.LanguageManager) window.LanguageManager.apply();
             } catch(e) {
                 alert(window.LanguageManager ? window.LanguageManager.get('audio.mic_error', 'Impossibile accedere al microfono.') : 'Mic error');
@@ -78,15 +81,49 @@ class AudioMonitor {
         }
     }
 
+    _deactivateMic() {
+        this.audioManager?.stopMicrophone();
+        this._micActive = false;
+        const btn = document.getElementById('btnSendMic');
+        btn?.classList.remove('active');
+        btn && (btn.querySelector('[data-lang]') || btn).setAttribute('data-lang', 'audio.send_mic');
+        this._hideMicUI();
+        if (window.LanguageManager) window.LanguageManager.apply();
+    }
+
+    _showMicUI() {
+        const meter = document.getElementById('micVuMeter');
+        const skipBtn = document.getElementById('btnStartSkip');
+        if (meter)   meter.style.display   = 'flex';
+        if (skipBtn) skipBtn.style.display = 'inline-flex';
+    }
+
+    _hideMicUI() {
+        const meter = document.getElementById('micVuMeter');
+        const skipBtn = document.getElementById('btnStartSkip');
+        if (meter)   meter.style.display   = 'none';
+        if (skipBtn) skipBtn.style.display = 'none';
+        const fill = document.getElementById('micVuFill');
+        if (fill) fill.style.width = '0%';
+    }
+
     _startMeter() {
-        const fillL = document.getElementById('audioMeterFillL');
-        const fillR = document.getElementById('audioMeterFillR');
+        const fillL   = document.getElementById('audioMeterFillL');
+        const fillR   = document.getElementById('audioMeterFillR');
+        const micFill = document.getElementById('micVuFill');
 
         const tick = () => {
             if (this.audioManager) {
                 const { l, r } = this.audioManager.getLevel();
                 if (fillL) fillL.style.width = l + '%';
                 if (fillR) fillR.style.width = r + '%';
+
+                if (this._micActive) {
+                    const micLevel = this.audioManager.getMicLevel();
+                    if (micFill) micFill.style.width = micLevel + '%';
+                } else {
+                    if (micFill) micFill.style.width = '0%';
+                }
             }
             this._rafId = requestAnimationFrame(tick);
         };

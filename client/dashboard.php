@@ -94,73 +94,91 @@ if ($isAdmin) {
     <!-- Main Content -->
     <div class="dashboard-main" id="dashboardMain">
 
-        <!-- Row 1: Player + Archive -->
+        <!-- Row 1: Player + Queue | Archive -->
         <div class="dashboard-row">
 
-            <!-- Player Control Panel -->
-            <div class="dashboard-panel panel-player" id="panelPlayer">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <i class="bi bi-play-circle me-2"></i>
-                        <span data-lang="player.title">Player Control</span>
+            <!-- Left column: Player + Queue stacked -->
+            <div class="player-queue-col">
+
+                <!-- Player Control Panel -->
+                <div class="dashboard-panel panel-player" id="panelPlayer">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="bi bi-play-circle me-2"></i>
+                            <span data-lang="player.title">Player Control</span>
+                        </div>
+                        <div class="panel-controls">
+                            <span class="mode-badge" id="modeBadge" data-lang="player.mode_auto">AUTO</span>
+                        </div>
                     </div>
-                    <div class="panel-controls">
-                        <span class="mode-badge" id="modeBadge" data-lang="player.mode_auto">AUTO</span>
+                    <div class="panel-body">
+                        <!-- Now Playing -->
+                        <div class="now-playing">
+                            <div class="now-playing-art">
+                                <i class="bi bi-music-note-beamed"></i>
+                            </div>
+                            <div class="now-playing-info">
+                                <div class="now-playing-title" id="nowPlayingTitle" data-lang="player.no_track">Nessun brano in onda</div>
+                                <div class="now-playing-artist" id="nowPlayingArtist"></div>
+                            </div>
+                            <div class="now-playing-status" id="playerStatusBadge">
+                                <span class="badge bg-secondary" data-lang="player.stopped">Stopped</span>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="progress-container">
+                            <span id="progressTime">0:00</span>
+                            <div class="progress flex-grow-1 mx-2" style="height: 6px; cursor:pointer;" id="progressBar">
+                                <div class="progress-bar bg-primary" id="progressFill" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <span id="progressDuration">0:00</span>
+                        </div>
+
+                        <!-- Intro Countdown -->
+                        <div id="introCountdown" class="intro-countdown" style="display:none"></div>
+
+                        <!-- Player Buttons -->
+                        <div class="player-buttons mt-2">
+                            <button class="btn btn-player btn-stop" id="btnStop" title="Stop">
+                                <i class="bi bi-stop-fill"></i>
+                            </button>
+                            <button class="btn btn-player btn-play" id="btnPlay" title="Play">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                            <button class="btn btn-player btn-pause" id="btnPause" title="Pause">
+                                <i class="bi bi-pause-fill"></i>
+                            </button>
+                            <button class="btn btn-player btn-skip" id="btnSkip" title="Skip">
+                                <i class="bi bi-skip-end-fill"></i>
+                            </button>
+                            <div class="mode-toggle ms-3">
+                                <button class="btn btn-sm btn-outline-primary" id="btnModeAuto" data-lang="player.auto">AUTO</button>
+                                <button class="btn btn-sm btn-outline-secondary" id="btnModeManual" data-lang="player.manual">MANUALE</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="panel-body">
-                    <!-- Now Playing -->
-                    <div class="now-playing">
-                        <div class="now-playing-art">
-                            <i class="bi bi-music-note-beamed"></i>
+
+                <!-- Playlist Queue Panel -->
+                <div class="dashboard-panel panel-playlist" id="panelPlaylist">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <i class="bi bi-list-ul me-2"></i>
+                            <span data-lang="playlist.title">Coda Playlist</span>
                         </div>
-                        <div class="now-playing-info">
-                            <div class="now-playing-title" id="nowPlayingTitle" data-lang="player.no_track">Nessun brano in onda</div>
-                            <div class="now-playing-artist" id="nowPlayingArtist"></div>
-                        </div>
-                        <div class="now-playing-status" id="playerStatusBadge">
-                            <span class="badge bg-secondary" data-lang="player.stopped">Stopped</span>
+                        <div class="panel-controls">
+                            <span class="badge bg-secondary" id="queueCount">0</span>
                         </div>
                     </div>
-
-                    <!-- Progress Bar -->
-                    <div class="progress-container">
-                        <span id="progressTime">0:00</span>
-                        <div class="progress flex-grow-1 mx-2" style="height: 6px; cursor:pointer;" id="progressBar">
-                            <div class="progress-bar bg-primary" id="progressFill" role="progressbar" style="width: 0%"></div>
+                    <div class="panel-body">
+                        <div id="playlistQueue" class="playlist-queue-list">
+                            <div class="text-center text-muted py-3" data-lang="playlist.empty">Coda vuota</div>
                         </div>
-                        <span id="progressDuration">0:00</span>
-                    </div>
-
-                    <!-- Player Buttons -->
-                    <div class="player-buttons">
-                        <button class="btn btn-player btn-stop" id="btnStop" title="Stop">
-                            <i class="bi bi-stop-fill"></i>
-                        </button>
-                        <button class="btn btn-player btn-play" id="btnPlay" title="Play">
-                            <i class="bi bi-play-fill"></i>
-                        </button>
-                        <button class="btn btn-player btn-pause" id="btnPause" title="Pause">
-                            <i class="bi bi-pause-fill"></i>
-                        </button>
-                        <button class="btn btn-player btn-skip" id="btnSkip" title="Skip">
-                            <i class="bi bi-skip-end-fill"></i>
-                        </button>
-                        <div class="mode-toggle ms-3">
-                            <button class="btn btn-sm btn-outline-primary" id="btnModeAuto" data-lang="player.auto">AUTO</button>
-                            <button class="btn btn-sm btn-outline-secondary" id="btnModeManual" data-lang="player.manual">MANUALE</button>
-                        </div>
-                    </div>
-
-                    <!-- Volume -->
-                    <div class="volume-row mt-2">
-                        <i class="bi bi-volume-down me-2"></i>
-                        <input type="range" class="form-range flex-grow-1" id="volumeSlider" min="0" max="100" value="80">
-                        <i class="bi bi-volume-up ms-2"></i>
-                        <span class="ms-2" id="volumeValue">80%</span>
                     </div>
                 </div>
-            </div>
+
+            </div><!-- end player-queue-col -->
 
             <!-- Archive Control Panel -->
             <div class="dashboard-panel panel-archive" id="panelArchive">
@@ -201,26 +219,8 @@ if ($isAdmin) {
             </div>
         </div>
 
-        <!-- Row 2: Playlist Queue + Countdown -->
+        <!-- Row 2: Countdown -->
         <div class="dashboard-row">
-
-            <!-- Playlist Queue Panel -->
-            <div class="dashboard-panel panel-playlist" id="panelPlaylist">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        <i class="bi bi-list-ul me-2"></i>
-                        <span data-lang="playlist.title">Coda Playlist</span>
-                    </div>
-                    <div class="panel-controls">
-                        <span class="badge bg-secondary" id="queueCount">0</span>
-                    </div>
-                </div>
-                <div class="panel-body">
-                    <div id="playlistQueue" class="playlist-queue-list">
-                        <div class="text-center text-muted py-3" data-lang="playlist.empty">Coda vuota</div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Countdown Panel -->
             <div class="dashboard-panel panel-countdown" id="panelCountdown">
@@ -261,6 +261,13 @@ if ($isAdmin) {
                     <div class="audio-meter-fill" id="audioMeterFillR"></div>
                 </div>
             </div>
+            <!-- Mic VU Meter (visible only when mic is active) -->
+            <div class="mic-vu-meter" id="micVuMeter" style="display:none">
+                <span class="mic-vu-label"><i class="bi bi-mic-fill me-1"></i>MIC IN</span>
+                <div class="mic-vu-track">
+                    <div class="mic-vu-fill" id="micVuFill"></div>
+                </div>
+            </div>
             <div class="audio-monitor-controls">
                 <select class="form-select form-select-sm me-2" id="audioOutputSelect" style="width:auto">
                     <option data-lang="audio.default_output">Output predefinito</option>
@@ -268,6 +275,10 @@ if ($isAdmin) {
                 <button class="btn btn-sm btn-mic" id="btnSendMic" title="Send Microphone">
                     <i class="bi bi-mic-fill me-1"></i>
                     <span data-lang="audio.send_mic">SEND MIC</span>
+                </button>
+                <button class="btn btn-sm btn-start-skip" id="btnStartSkip" style="display:none" title="Stop Mic &amp; Skip">
+                    <i class="bi bi-skip-end-fill me-1"></i>
+                    START &amp; SKIP
                 </button>
                 <select class="form-select form-select-sm ms-2 me-2" id="audioInputSelect" style="width:auto">
                     <option data-lang="audio.default_input">Microfono predefinito</option>
