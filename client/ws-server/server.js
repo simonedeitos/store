@@ -16,8 +16,12 @@ const http      = require('http');
 const { RoomManager } = require('./rooms');
 
 // --- Config ---
-const PORT       = process.env.PORT       || 8080;
-const JWT_SECRET = process.env.JWT_SECRET || 'airdirector-admin-sso-secret-2025';
+const PORT       = process.env.PORT || 8080;
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('[WS Server] FATAL: JWT_SECRET environment variable is required.');
+    process.exit(1);
+}
 const PING_INTERVAL = 30000; // 30s
 
 const roomManager = new RoomManager();
@@ -194,7 +198,7 @@ function broadcastUserList(room) {
 
 function routeToPeer(room, peerId, msg) {
     room.users.forEach((info, ws) => {
-        if (String(info.userId) === String(peerId) && ws.readyState === 1) {
+        if (String(info.userId) === String(peerId) && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify(msg));
         }
     });

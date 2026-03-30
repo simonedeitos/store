@@ -2,6 +2,8 @@
  * AirDirector Client - Room Manager
  * Manages connected users grouped by station token
  */
+const WS_OPEN = 1; // WebSocket.OPEN
+
 class Room {
     constructor(token) {
         this.token = token;
@@ -36,7 +38,7 @@ class Room {
     broadcast(message, excludeWs = null) {
         const data = typeof message === 'string' ? message : JSON.stringify(message);
         this.users.forEach((info, ws) => {
-            if (ws !== excludeWs && ws.readyState === 1 /* OPEN */) {
+            if (ws !== excludeWs && ws.readyState === WS_OPEN) {
                 ws.send(data);
             }
         });
@@ -48,7 +50,7 @@ class Room {
     sendToAirDirector(message) {
         const data = typeof message === 'string' ? message : JSON.stringify(message);
         this.users.forEach((info, ws) => {
-            if (info.type === 'airdirector' && ws.readyState === 1) {
+            if (info.type === 'airdirector' && ws.readyState === WS_OPEN) {
                 ws.send(data);
             }
         });
@@ -60,7 +62,7 @@ class Room {
     sendToClients(message, excludeWs = null) {
         const data = typeof message === 'string' ? message : JSON.stringify(message);
         this.users.forEach((info, ws) => {
-            if (info.type !== 'airdirector' && ws !== excludeWs && ws.readyState === 1) {
+            if (info.type !== 'airdirector' && ws !== excludeWs && ws.readyState === WS_OPEN) {
                 ws.send(data);
             }
         });
