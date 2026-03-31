@@ -118,9 +118,17 @@ wss.on('connection', (ws, req) => {
             case 'archive':
             case 'music_archive':
             case 'clip_archive':
-            case 'audio_data':
             case 'countdown':
                 currentRoom.sendToClients(msg);
+                break;
+
+            // Bidirectional audio: AirDirector → browsers or browser → AirDirector
+            case 'audio_data':
+                if (senderInfo?.type === 'airdirector') {
+                    currentRoom.sendToClients(msg);
+                } else {
+                    currentRoom.sendToAirDirector(msg);
+                }
                 break;
 
             // Mic status from browser client
