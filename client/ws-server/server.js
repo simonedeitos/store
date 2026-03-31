@@ -95,7 +95,20 @@ wss.on('connection', (ws, req) => {
     ws.on('pong', () => { ws.isAlive = true; });
 
     // --- Message handling ---
-    ws.on('message', (raw) => {
+    ws.on('message', (raw, isBinary) => {
+        // Handle binary messages (e.g. raw audio data)
+        if (isBinary) {
+            const currentRoom = roomManager.findRoom(ws);
+            if (!currentRoom) return;
+            const senderInfo = currentRoom.getUserInfo(ws);
+            if (senderInfo?.type === 'airdirector') {
+                currentRoom.sendBinaryToClients(raw);
+            } else {
+                currentRoom.sendBinaryToAirDirector(raw);
+            }
+            return;
+        }
+
         const rawStr = raw.toString();
         let msg;
         try { msg = JSON.parse(rawStr); } catch { return; }
@@ -106,6 +119,11 @@ wss.on('connection', (ws, req) => {
         const senderInfo = currentRoom.getUserInfo(ws);
 
         switch (msg.type) {
+            // AirDirector auth handshake — respond with auth_ok, don't broadcast
+            case 'auth':
+                ws.send(JSON.stringify({ type: 'auth_ok' }));
+                break;
+
             // From browser → AirDirector
             case 'command':
                 currentRoom.sendToAirDirector(msg);
@@ -127,6 +145,7 @@ wss.on('connection', (ws, req) => {
                 if (senderInfo?.type === 'airdirector') {
                     currentRoom.sendToClients(rawStr);
                 } else {
+                    console.log(`[WS] audio_data from browser (${senderInfo?.name}) → AirDirector`);
                     currentRoom.sendToAirDirector(rawStr);
                 }
                 break;

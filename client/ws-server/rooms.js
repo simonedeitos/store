@@ -68,6 +68,28 @@ class Room {
         });
     }
 
+    /**
+     * Send raw binary data to AirDirector client(s) in this room
+     */
+    sendBinaryToAirDirector(data) {
+        this.users.forEach((info, ws) => {
+            if (info.type === 'airdirector' && ws.readyState === WS_OPEN) {
+                ws.send(data);
+            }
+        });
+    }
+
+    /**
+     * Send raw binary data to all browser clients (not AirDirector)
+     */
+    sendBinaryToClients(data, excludeWs = null) {
+        this.users.forEach((info, ws) => {
+            if (info.type !== 'airdirector' && ws !== excludeWs && ws.readyState === WS_OPEN) {
+                ws.send(data);
+            }
+        });
+    }
+
     getConnectedUsers() {
         const list = [];
         this.users.forEach((info) => {

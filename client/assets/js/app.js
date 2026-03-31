@@ -154,6 +154,9 @@ function handleWSMessage(msg) {
         case 'webrtc-ice':
             audioManager?.handleIceCandidate(msg.peerId, msg.candidate);
             break;
+        case 'auth_ok':
+            console.log('[WS] auth_ok received');
+            break;
         default:
             // Handle commands without type wrapper for robustness
             if (msg.command === 'audio_data' && msg.data) {
