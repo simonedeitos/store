@@ -322,11 +322,10 @@ class AudioManager {
         this._mp3Chunks     = [];
         this._mp3ChunksSize = 0;
 
-        // Convert to base64 in chunks to avoid call-stack overflow on large arrays
+        // Convert to base64 — build string incrementally to avoid call-stack limits
         let binary = '';
-        const chunkSize = 32768;
-        for (let i = 0; i < combined.length; i += chunkSize) {
-            binary += String.fromCharCode.apply(null, combined.subarray(i, Math.min(i + chunkSize, combined.length)));
+        for (let i = 0; i < combined.length; i++) {
+            binary += String.fromCharCode(combined[i]);
         }
         const base64 = btoa(binary);
 
