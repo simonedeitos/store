@@ -96,8 +96,9 @@ wss.on('connection', (ws, req) => {
 
     // --- Message handling ---
     ws.on('message', (raw) => {
+        const rawStr = raw.toString();
         let msg;
-        try { msg = JSON.parse(raw); } catch { return; }
+        try { msg = JSON.parse(rawStr); } catch { return; }
 
         const currentRoom = roomManager.findRoom(ws);
         if (!currentRoom) return;
@@ -108,7 +109,6 @@ wss.on('connection', (ws, req) => {
             // From browser → AirDirector
             case 'command':
                 currentRoom.sendToAirDirector(msg);
-                // Log: optional
                 break;
 
             // From AirDirector → all browser clients
@@ -122,13 +122,18 @@ wss.on('connection', (ws, req) => {
                 currentRoom.sendToClients(msg);
                 break;
 
-            // Bidirectional audio: AirDirector → browsers or browser → AirDirector
+            // Bidirectional audio: forward raw string to avoid JSON parse/serialize overhead
             case 'audio_data':
                 if (senderInfo?.type === 'airdirector') {
-                    currentRoom.sendToClients(msg);
+                    currentRoom.sendToClients(rawStr);
                 } else {
-                    currentRoom.sendToAirDirector(msg);
+                    currentRoom.sendToAirDirector(rawStr);
                 }
+                break;
+
+            // Browser requests archive from AirDirector
+            case 'request_archive':
+                currentRoom.sendToAirDirector(msg);
                 break;
 
             // Mic status from browser client

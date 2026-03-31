@@ -49,7 +49,11 @@ async function initApp() {
     // 3. Init WebSocket
     wsClient = new AirDirectorWS({
         wsUrl: cfg.wsUrl,
-        onOpen:  () => updateConnectionStatus(true),
+        onOpen:  () => {
+            updateConnectionStatus(true);
+            // Request archive data from AirDirector on connect/reconnect
+            wsClient.send({ type: 'request_archive' });
+        },
         onClose: () => updateConnectionStatus(false),
         onMessage: handleWSMessage,
         onError: (e) => console.error('[WS] Error', e),

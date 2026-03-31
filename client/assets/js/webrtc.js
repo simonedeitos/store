@@ -29,6 +29,14 @@ class AudioManager {
         this._micSource   = null;
         this._mediaRecorder = null;
 
+        // MP3 encoding state (lamejs)
+        this._mp3Encoder      = null;
+        this._mp3Chunks       = [];
+        this._mp3ChunksSize   = 0;
+        this._scriptProcessor = null;
+        this._mp3SilentGain   = null;
+        this._mp3FlushTimer   = null;
+
         // Streaming MP3 playback state
         this._nextPlaybackTime = 0;
         this._pendingMp3       = null;
@@ -95,8 +103,12 @@ class AudioManager {
 
                 // Schedule playback at the correct time to avoid gaps and overlaps
                 const now = this.audioCtx.currentTime;
+                const maxLatency = 2.0; // Cap buffered-ahead time to 2 seconds
                 if (this._nextPlaybackTime < now) {
                     this._nextPlaybackTime = now;
+                } else if (this._nextPlaybackTime > now + maxLatency) {
+                    // Too far ahead — reset to reduce latency buildup
+                    this._nextPlaybackTime = now + 0.05;
                 }
                 source.start(this._nextPlaybackTime);
                 this._nextPlaybackTime += audioBuffer.duration;
@@ -171,7 +183,7 @@ class AudioManager {
         if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
     }
 
-    // --- Send microphone ---
+    // --- Send microphone (MP3 encoding via lamejs, fallback to MediaRecorder) ---
     async startMicrophone(inputDeviceId) {
         if (this.micActive) return;
         this._inputDeviceId = inputDeviceId || null;
@@ -179,8 +191,8 @@ class AudioManager {
         const constraints = {
             audio: {
                 deviceId: inputDeviceId ? { exact: inputDeviceId } : undefined,
-                channelCount: this._qualityPresets[this._quality].channelCount,
-                sampleRate: this._qualityPresets[this._quality].sampleRate,
+                channelCount: 1, // mono for mic transmission
+                sampleRate: 44100,
                 echoCancellation: true,
                 noiseSuppression: true,
                 autoGainControl: true,
@@ -191,34 +203,26 @@ class AudioManager {
             this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
             this.micActive = true;
 
-            // Connect mic stream to a dedicated analyser for VU meter
-            if (this.audioCtx) {
-                this._micSource   = this.audioCtx.createMediaStreamSource(this.localStream);
-                this._micAnalyser = this.audioCtx.createAnalyser();
-                this._micAnalyser.fftSize = 256;
-                this._micSource.connect(this._micAnalyser);
+            // Ensure AudioContext exists
+            if (!this.audioCtx) {
+                this._initAudioChain();
+            }
+            if (this.audioCtx.state === 'suspended') {
+                await this.audioCtx.resume();
             }
 
-            // Start MediaRecorder to send audio as base64 JSON chunks
-            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-                ? 'audio/webm;codecs=opus'
-                : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
-            const recorderOpts = mimeType ? { mimeType } : {};
-            try {
-                this._mediaRecorder = new MediaRecorder(this.localStream, recorderOpts);
-                this._mediaRecorder.ondataavailable = (e) => {
-                    if (e.data && e.data.size > 0 && this._ws) {
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                            const base64 = reader.result.split(',')[1];
-                            if (base64) this._ws.send({ type: 'audio_data', direction: 'to_ad', data: base64 });
-                        };
-                        reader.readAsDataURL(e.data);
-                    }
-                };
-                this._mediaRecorder.start(100); // 100 ms chunks
-            } catch(recErr) {
-                console.warn('[AudioManager] MediaRecorder init error:', recErr);
+            // Connect mic stream to a dedicated analyser for VU meter
+            this._micSource   = this.audioCtx.createMediaStreamSource(this.localStream);
+            this._micAnalyser = this.audioCtx.createAnalyser();
+            this._micAnalyser.fftSize = 256;
+            this._micSource.connect(this._micAnalyser);
+
+            // Use lamejs MP3 encoding if available, otherwise fall back to MediaRecorder
+            if (typeof lamejs !== 'undefined') {
+                this._startMp3Encoding();
+            } else {
+                console.warn('[AudioManager] lamejs not available, falling back to MediaRecorder (WebM/Opus)');
+                this._startMediaRecorderFallback();
             }
 
             // Add track to all existing peer connections (WebRTC legacy)
@@ -237,12 +241,166 @@ class AudioManager {
         }
     }
 
+    /**
+     * Start MP3 encoding pipeline: ScriptProcessorNode captures raw PCM,
+     * lamejs encodes it to MP3, and chunks are sent over WebSocket.
+     */
+    _startMp3Encoding() {
+        const sampleRate = this.audioCtx.sampleRate;
+        const channels = 1;
+        const kbps = 128;
+
+        try {
+            this._mp3Encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+        } catch (e) {
+            console.warn('[AudioManager] lamejs Mp3Encoder init failed, falling back to MediaRecorder:', e);
+            this._startMediaRecorderFallback();
+            return;
+        }
+
+        this._mp3Chunks     = [];
+        this._mp3ChunksSize = 0;
+
+        // 8 KB threshold — ensures each sent chunk contains multiple complete MP3 frames
+        // (one 128kbps/44100Hz MP3 frame ≈ 418 bytes, so 8 KB ≈ 19 frames)
+        const MP3_SEND_THRESHOLD = 8192;
+
+        const bufferSize = 4096;
+        this._scriptProcessor = this.audioCtx.createScriptProcessor(bufferSize, 1, 1);
+
+        this._scriptProcessor.onaudioprocess = (e) => {
+            if (!this._mp3Encoder || !this._ws) return;
+
+            const input = e.inputBuffer.getChannelData(0);
+            const samples = new Int16Array(input.length);
+            for (let i = 0; i < input.length; i++) {
+                const s = Math.max(-1, Math.min(1, input[i]));
+                samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+
+            const mp3buf = this._mp3Encoder.encodeBuffer(samples);
+            if (mp3buf.length > 0) {
+                this._mp3Chunks.push(new Uint8Array(mp3buf));
+                this._mp3ChunksSize += mp3buf.length;
+            }
+
+            if (this._mp3ChunksSize >= MP3_SEND_THRESHOLD) {
+                this._flushMp3Chunks();
+            }
+        };
+
+        // ScriptProcessorNode must be connected to destination to process audio.
+        // Route through a silent gain node so mic audio doesn't play back to speakers.
+        this._micSource.connect(this._scriptProcessor);
+        this._mp3SilentGain = this.audioCtx.createGain();
+        this._mp3SilentGain.gain.value = 0;
+        this._scriptProcessor.connect(this._mp3SilentGain);
+        this._mp3SilentGain.connect(this.audioCtx.destination);
+
+        // Periodic flush to limit latency (send partial data every 500 ms)
+        this._mp3FlushTimer = setInterval(() => {
+            if (this._mp3ChunksSize > 0) {
+                this._flushMp3Chunks();
+            }
+        }, 500);
+
+        console.log(`[AudioManager] MP3 mic encoding started (${sampleRate}Hz, ${kbps}kbps mono)`);
+    }
+
+    /**
+     * Concatenate accumulated MP3 frame data and send as base64 over WebSocket.
+     */
+    _flushMp3Chunks() {
+        if (!this._mp3Chunks || this._mp3ChunksSize === 0) return;
+
+        const combined = new Uint8Array(this._mp3ChunksSize);
+        let offset = 0;
+        for (const chunk of this._mp3Chunks) {
+            combined.set(chunk, offset);
+            offset += chunk.length;
+        }
+        this._mp3Chunks     = [];
+        this._mp3ChunksSize = 0;
+
+        // Convert to base64 — build string incrementally to avoid call-stack limits
+        let binary = '';
+        for (let i = 0; i < combined.length; i++) {
+            binary += String.fromCharCode(combined[i]);
+        }
+        const base64 = btoa(binary);
+
+        if (this._ws) {
+            this._ws.send({ type: 'audio_data', direction: 'to_ad', data: base64 });
+        }
+    }
+
+    /**
+     * Fallback: use MediaRecorder with WebM/Opus when lamejs is not available.
+     */
+    _startMediaRecorderFallback() {
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+        const recorderOpts = mimeType ? { mimeType } : {};
+        try {
+            this._mediaRecorder = new MediaRecorder(this.localStream, recorderOpts);
+            this._mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0 && this._ws) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result.split(',')[1];
+                        if (base64) this._ws.send({ type: 'audio_data', direction: 'to_ad', data: base64 });
+                    };
+                    reader.readAsDataURL(e.data);
+                }
+            };
+            this._mediaRecorder.start(100); // 100 ms chunks
+            console.log('[AudioManager] MediaRecorder fallback started (WebM/Opus)');
+        } catch(recErr) {
+            console.warn('[AudioManager] MediaRecorder init error:', recErr);
+        }
+    }
+
     stopMicrophone() {
         if (!this.micActive) return;
+
+        // Flush and send any remaining MP3 data
+        if (this._mp3Encoder) {
+            try {
+                const remaining = this._mp3Encoder.flush();
+                if (remaining.length > 0) {
+                    this._mp3Chunks.push(new Uint8Array(remaining));
+                    this._mp3ChunksSize += remaining.length;
+                }
+                this._flushMp3Chunks();
+            } catch (e) { /* ignore flush errors on stop */ }
+            this._mp3Encoder    = null;
+            this._mp3Chunks     = [];
+            this._mp3ChunksSize = 0;
+        }
+
+        if (this._mp3FlushTimer) {
+            clearInterval(this._mp3FlushTimer);
+            this._mp3FlushTimer = null;
+        }
+
+        if (this._scriptProcessor) {
+            this._scriptProcessor.disconnect();
+            this._scriptProcessor.onaudioprocess = null;
+            this._scriptProcessor = null;
+        }
+
+        if (this._mp3SilentGain) {
+            this._mp3SilentGain.disconnect();
+            this._mp3SilentGain = null;
+        }
+
+        // MediaRecorder fallback cleanup
         if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
             this._mediaRecorder.stop();
         }
         this._mediaRecorder = null;
+
         if (this.localStream) {
             this.localStream.getTracks().forEach(t => t.stop());
             this.localStream = null;
