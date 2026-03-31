@@ -105,7 +105,7 @@ class AudioManager {
 
                 // Schedule playback at the correct time to avoid gaps and overlaps
                 const now = this.audioCtx.currentTime;
-                const maxLatency = 2.0; // Cap buffered-ahead time to 2 seconds
+                const maxLatency = 0.5; // Cap buffered-ahead time to 0.5 seconds for low-latency
                 if (this._nextPlaybackTime < now) {
                     this._nextPlaybackTime = now;
                 } else if (this._nextPlaybackTime > now + maxLatency) {
@@ -223,11 +223,15 @@ class AudioManager {
             this._micAnalyser.fftSize = 256;
             this._micSource.connect(this._micAnalyser);
 
-            // Use lamejs MP3 encoding if available, otherwise fall back to MediaRecorder
-            if (typeof lamejs !== 'undefined') {
+            // Prefer MediaRecorder with Opus (low-latency, like Cleanfeed) over lamejs MP3.
+            // lamejs is used as fallback when MediaRecorder/Opus is unavailable.
+            if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                this._startMediaRecorderOpus();
+            } else if (typeof lamejs !== 'undefined') {
+                console.warn('[AudioManager] Opus MediaRecorder unavailable, falling back to lamejs MP3');
                 this._startMp3Encoding();
             } else {
-                console.warn('[AudioManager] lamejs not available, falling back to MediaRecorder (WebM/Opus)');
+                console.warn('[AudioManager] Both Opus MediaRecorder and lamejs unavailable — using generic MediaRecorder fallback');
                 this._startMediaRecorderFallback();
             }
 
@@ -267,9 +271,8 @@ class AudioManager {
         this._mp3Chunks     = [];
         this._mp3ChunksSize = 0;
 
-        // 8 KB threshold — ensures each sent chunk contains multiple complete MP3 frames
-        // (one 128kbps/44100Hz MP3 frame ≈ 418 bytes, so 8 KB ≈ 19 frames)
-        const MP3_SEND_THRESHOLD = 8192;
+        // 2 KB threshold — lower latency; one 128kbps/44100Hz MP3 frame ≈ 418 bytes, so 2 KB ≈ 4-5 frames
+        const MP3_SEND_THRESHOLD = 2048;
 
         const bufferSize = 4096;
         this._scriptProcessor = this.audioCtx.createScriptProcessor(bufferSize, 1, 1);
@@ -303,12 +306,12 @@ class AudioManager {
         this._scriptProcessor.connect(this._mp3SilentGain);
         this._mp3SilentGain.connect(this.audioCtx.destination);
 
-        // Periodic flush to limit latency (send partial data every 500 ms)
+        // Periodic flush to limit latency (send partial data every 100 ms)
         this._mp3FlushTimer = setInterval(() => {
             if (this._mp3ChunksSize > 0) {
                 this._flushMp3Chunks();
             }
-        }, 500);
+        }, 100);
 
         console.log(`[AudioManager] MP3 mic encoding started (${sampleRate}Hz, ${kbps}kbps mono)`);
     }
@@ -341,7 +344,35 @@ class AudioManager {
     }
 
     /**
-     * Fallback: use MediaRecorder with WebM/Opus when lamejs is not available.
+     * Primary: use MediaRecorder with WebM/Opus at 20ms chunks for low-latency transmission.
+     */
+    _startMediaRecorderOpus() {
+        try {
+            this._mediaRecorder = new MediaRecorder(this.localStream, { mimeType: 'audio/webm;codecs=opus' });
+            this._mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0 && this._ws) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result.split(',')[1];
+                        if (base64) this._ws.send({ type: 'audio_data', direction: 'to_ad', data: base64 });
+                    };
+                    reader.readAsDataURL(e.data);
+                }
+            };
+            this._mediaRecorder.start(20); // 20ms chunks — Opus low-latency (like Cleanfeed)
+            console.log('[AudioManager] MediaRecorder Opus started (20ms chunks)');
+        } catch (recErr) {
+            console.warn('[AudioManager] MediaRecorder Opus init error, falling back to lamejs:', recErr);
+            if (typeof lamejs !== 'undefined') {
+                this._startMp3Encoding();
+            } else {
+                this._startMediaRecorderFallback();
+            }
+        }
+    }
+
+    /**
+     * Fallback: use MediaRecorder with best available codec when Opus is not supported.
      */
     _startMediaRecorderFallback() {
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -360,7 +391,7 @@ class AudioManager {
                     reader.readAsDataURL(e.data);
                 }
             };
-            this._mediaRecorder.start(100); // 100 ms chunks
+            this._mediaRecorder.start(20); // 20ms chunks for lower latency
             console.log('[AudioManager] MediaRecorder fallback started (WebM/Opus)');
         } catch(recErr) {
             console.warn('[AudioManager] MediaRecorder init error:', recErr);

@@ -17,11 +17,12 @@ const { RoomManager } = require('./rooms');
 
 // --- Config ---
 const PORT       = process.env.PORT || 8080;
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    console.error('[WS Server] FATAL: JWT_SECRET environment variable is required.');
-    process.exit(1);
-}
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+    const fallback = 'airdirector_default_secret_change_me';
+    console.warn('[WS Server] WARNING: JWT_SECRET env var is not set — using built-in fallback.');
+    console.warn('[WS Server] WARNING: Set JWT_SECRET in your environment to secure browser authentication!');
+    return fallback;
+})();
 const PING_INTERVAL = 30000; // 30s
 
 const roomManager = new RoomManager();
