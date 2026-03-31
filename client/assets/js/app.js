@@ -150,6 +150,12 @@ function handleWSMessage(msg) {
         case 'webrtc-ice':
             audioManager?.handleIceCandidate(msg.peerId, msg.candidate);
             break;
+        default:
+            // Handle commands without type wrapper for robustness
+            if (msg.command === 'audio_data' && msg.data) {
+                audioManager?.receiveAudioData(msg.data);
+            }
+            break;
     }
 }
 

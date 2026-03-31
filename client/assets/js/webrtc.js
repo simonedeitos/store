@@ -211,7 +211,7 @@ class AudioManager {
                         const reader = new FileReader();
                         reader.onload = () => {
                             const base64 = reader.result.split(',')[1];
-                            if (base64) this._ws.send({ command: 'audio_data', data: base64 });
+                            if (base64) this._ws.send({ type: 'audio_data', direction: 'to_ad', data: base64 });
                         };
                         reader.readAsDataURL(e.data);
                     }
@@ -252,6 +252,14 @@ class AudioManager {
         this.micActive = false;
         if (this._ws) {
             this._ws.send({ type: 'mic-status', active: false });
+        }
+    }
+
+    // --- Resume AudioContext (must be called from a user gesture) ---
+    resumeAudioContext() {
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+            // Resume failure is non-fatal; audio will retry on the next user interaction
+            this.audioCtx.resume().catch(() => {});
         }
     }
 

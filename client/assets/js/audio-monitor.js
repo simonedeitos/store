@@ -39,6 +39,13 @@ class AudioMonitor {
         // Init analyser
         if (this.audioManager) {
             try { this.audioManager.initAnalyser(); } catch(e) {}
+
+            // Resume AudioContext on first user interaction (browser autoplay policy)
+            const resumeOnClick = () => {
+                this.audioManager.resumeAudioContext();
+                document.body.removeEventListener('click', resumeOnClick, true);
+            };
+            document.body.addEventListener('click', resumeOnClick, true);
         }
 
         this._startMeter();
