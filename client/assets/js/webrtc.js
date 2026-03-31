@@ -42,6 +42,7 @@ class AudioManager {
         this._pendingMp3       = null;
         this._muted            = false;
         this._gainNode         = null;
+        this._decodeErrCount   = 0;
     }
 
     setWS(ws) { this._ws = ws; }
@@ -92,6 +93,7 @@ class AudioManager {
             try {
                 // decodeAudioData detaches the ArrayBuffer, so pass a copy
                 const audioBuffer = await this.audioCtx.decodeAudioData(data.buffer.slice(0));
+                this._decodeErrCount = 0;
                 const source = this.audioCtx.createBufferSource();
                 source.buffer = audioBuffer;
                 // Route: source → analyser → gainNode → destination
@@ -115,6 +117,10 @@ class AudioManager {
             } catch (decErr) {
                 // Not enough data for a complete MP3 frame; accumulate for next chunk.
                 // Discard if over 64KB to avoid unbounded growth on wrong-format data.
+                this._decodeErrCount++;
+                if (this._decodeErrCount % 10 === 1) {
+                    console.warn(`[AudioManager] decodeAudioData failed (attempt ${this._decodeErrCount}):`, decErr.message || decErr);
+                }
                 const maxPendingSize = 64 * 1024;
                 if (data.length < maxPendingSize) {
                     this._pendingMp3 = data;

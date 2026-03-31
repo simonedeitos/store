@@ -40,12 +40,15 @@ class AudioMonitor {
         if (this.audioManager) {
             try { this.audioManager.initAnalyser(); } catch(e) {}
 
-            // Resume AudioContext on first user interaction (browser autoplay policy)
-            const resumeOnClick = () => {
+            // Resume AudioContext on any user interaction (browser autoplay policy).
+            // Use persistent listeners so new AudioContext instances created later
+            // (e.g. when the first audio_data arrives) are also resumed.
+            const resumeAudio = () => {
                 this.audioManager.resumeAudioContext();
-                document.body.removeEventListener('click', resumeOnClick, true);
             };
-            document.body.addEventListener('click', resumeOnClick, true);
+            ['click', 'touchstart', 'keydown'].forEach(evt => {
+                document.body.addEventListener(evt, resumeAudio, { capture: true, passive: true });
+            });
         }
 
         this._startMeter();
